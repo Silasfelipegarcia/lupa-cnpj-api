@@ -21,4 +21,10 @@ public interface ImportJobRepository extends JpaRepository<ImportJobEntity, UUID
 
     @Query("SELECT COUNT(j) FROM ImportJobEntity j WHERE j.status IN ('NA_FILA', 'PROCESSANDO')")
     long countAtivos();
+
+    @Query("SELECT j FROM ImportJobEntity j WHERE j.status IN ('NA_FILA', 'PROCESSANDO') ORDER BY j.createdAt ASC")
+    List<ImportJobEntity> findAtivosOrderByCreatedAtAsc();
+
+    Optional<ImportJobEntity> findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+            UUID userId, List<String> statuses);
 }

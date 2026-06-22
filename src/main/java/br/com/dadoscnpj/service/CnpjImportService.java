@@ -60,22 +60,31 @@ public class CnpjImportService {
                                               Consumer<ProgressoCnpj> onProgress,
                                               BooleanSupplier continuarProcessamento)
             throws InterruptedException, IOException {
+        return processarLinhas(linhas, onProgress, continuarProcessamento, 1,
+                new HashMap<>(), new HashMap<>());
+    }
+
+    public List<CnpjResult> processarLinhas(List<ImportRow> linhas,
+                                              Consumer<ProgressoCnpj> onProgress,
+                                              BooleanSupplier continuarProcessamento,
+                                              int numeroLinhaInicial,
+                                              Map<String, CnpjResult> cachePorCnpj,
+                                              Map<String, CnpjResult> cachePorRazaoSocial)
+            throws InterruptedException, IOException {
         List<CnpjResult> resultados = new ArrayList<>();
-        Map<String, CnpjResult> cachePorCnpj = new HashMap<>();
-        Map<String, CnpjResult> cachePorRazaoSocial = new HashMap<>();
         int total = linhas.size();
-        int atual = 0;
+        int numeroLinha = numeroLinhaInicial - 1;
 
         for (ImportRow linha : linhas) {
             if (continuarProcessamento != null && !continuarProcessamento.getAsBoolean()) {
-                log.info("Processamento interrompido pelo usuário após {} de {} linha(s)", atual, total);
+                log.info("Processamento interrompido pelo usuário após a linha {}", numeroLinha);
                 break;
             }
 
-            atual++;
-            log.info("Processando linha {}/{}", atual, total);
+            numeroLinha++;
+            log.info("Processando linha {} ({}/{})", numeroLinha, resultados.size() + 1, total);
 
-            CnpjResult resultado = processarLinha(linha, atual, cachePorCnpj, cachePorRazaoSocial);
+            CnpjResult resultado = processarLinha(linha, numeroLinha, cachePorCnpj, cachePorRazaoSocial);
             resultados.add(resultado);
             onProgress.accept(new ProgressoCnpj(
                     "SUCESSO".equals(resultado.getStatusConsulta()) ? "SUCESSO" : "ERRO",
@@ -83,6 +92,29 @@ public class CnpjImportService {
         }
 
         return resultados;
+    }
+
+    public CachesConsulta construirCaches(List<CnpjResult> resultadosAnteriores) {
+        Map<String, CnpjResult> cachePorCnpj = new HashMap<>();
+        Map<String, CnpjResult> cachePorRazaoSocial = new HashMap<>();
+
+        for (CnpjResult resultado : resultadosAnteriores) {
+            if (!isSucesso(resultado)) {
+                continue;
+            }
+            String cnpj = extrairCnpjDoResultado(resultado);
+            if (cnpj != null) {
+                cachePorCnpj.put(cnpj, resultado);
+            }
+            if (resultado.getRazaoSocialInformada() != null && !resultado.getRazaoSocialInformada().isBlank()) {
+                cachePorRazaoSocial.put(chaveRazaoSocial(resultado.getRazaoSocialInformada()), resultado);
+            }
+        }
+
+        return new CachesConsulta(cachePorCnpj, cachePorRazaoSocial);
+    }
+
+    public record CachesConsulta(Map<String, CnpjResult> porCnpj, Map<String, CnpjResult> porRazaoSocial) {
     }
 
     CnpjResult processarLinha(ImportRow linha, int numeroLinha) {

@@ -77,6 +77,18 @@ public class ImportJobStore {
         return (int) jobRepository.countAtivos();
     }
 
+    @Transactional(readOnly = true)
+    public List<ImportJobEntity> listarAtivos() {
+        return jobRepository.findAtivosOrderByCreatedAtAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ImportJob> buscarAtivoDoUsuario(UUID userId) {
+        return jobRepository.findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+                        userId, List.of(ImportJobStatus.NA_FILA.name(), ImportJobStatus.PROCESSANDO.name()))
+                .map(entity -> mapper.toDomain(entity, carregarResultados(entity.getId())));
+    }
+
     @Transactional
     public List<String> removerExpirados(Duration ttl) {
         Instant limite = Instant.now().minus(ttl);

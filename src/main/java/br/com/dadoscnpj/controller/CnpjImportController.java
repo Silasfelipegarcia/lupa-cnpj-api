@@ -94,6 +94,16 @@ public class CnpjImportController {
                 .body(new ByteArrayResource(excel));
     }
 
+    @GetMapping("/import/ativo")
+    public ResponseEntity<ImportJobResponse> jobAtivo() {
+        UUID userId = SecurityUtils.currentUserId();
+        ImportJobResponse job = jobQueueService.consultarJobAtivo(userId);
+        if (job == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(job);
+    }
+
     @GetMapping("/import/historico")
     public ResponseEntity<List<ImportJobSummaryResponse>> historico() {
         UUID userId = SecurityUtils.currentUserId();
