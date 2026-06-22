@@ -1,6 +1,8 @@
 package br.com.dadoscnpj.controller;
 
+import br.com.dadoscnpj.config.CnpjApiProperties;
 import br.com.dadoscnpj.csv.CnpjExcelTemplateWriter;
+import br.com.dadoscnpj.dto.CnpjConfigResponse;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportRow;
 import br.com.dadoscnpj.security.RateLimitFilter;
@@ -38,13 +40,21 @@ public class CnpjImportController {
     private final CnpjImportService cnpjImportService;
     private final ImportJobQueueService jobQueueService;
     private final CnpjExcelTemplateWriter templateWriter;
+    private final CnpjApiProperties cnpjApiProperties;
 
     public CnpjImportController(CnpjImportService cnpjImportService,
                                 ImportJobQueueService jobQueueService,
-                                CnpjExcelTemplateWriter templateWriter) {
+                                CnpjExcelTemplateWriter templateWriter,
+                                CnpjApiProperties cnpjApiProperties) {
         this.cnpjImportService = cnpjImportService;
         this.jobQueueService = jobQueueService;
         this.templateWriter = templateWriter;
+        this.cnpjApiProperties = cnpjApiProperties;
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<CnpjConfigResponse> configuracao() {
+        return ResponseEntity.ok(new CnpjConfigResponse(cnpjApiProperties.isPesquisaRazaoSocialAtiva()));
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

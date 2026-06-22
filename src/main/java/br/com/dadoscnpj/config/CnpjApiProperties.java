@@ -8,6 +8,7 @@ public class CnpjApiProperties {
     private String baseUrl = "https://publica.cnpj.ws/cnpj";
     private String pesquisaUrl = "https://comercial.cnpj.ws/v2/pesquisa";
     private String token = "";
+    private boolean pesquisaRazaoSocialHabilitada = false;
     private int rateLimitPerMinute = 3;
     private int timeoutSeconds = 30;
 
@@ -33,6 +34,18 @@ public class CnpjApiProperties {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public boolean isPesquisaRazaoSocialHabilitada() {
+        return pesquisaRazaoSocialHabilitada;
+    }
+
+    public void setPesquisaRazaoSocialHabilitada(boolean pesquisaRazaoSocialHabilitada) {
+        this.pesquisaRazaoSocialHabilitada = pesquisaRazaoSocialHabilitada;
+    }
+
+    public boolean isPesquisaRazaoSocialAtiva() {
+        return pesquisaRazaoSocialHabilitada && token != null && !token.isBlank();
     }
 
     public boolean isPesquisaHabilitada() {

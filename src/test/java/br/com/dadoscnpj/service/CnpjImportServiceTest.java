@@ -2,6 +2,7 @@ package br.com.dadoscnpj.service;
 
 import br.com.dadoscnpj.client.CnpjClient;
 import br.com.dadoscnpj.client.CnpjPesquisaClient;
+import br.com.dadoscnpj.config.CnpjApiProperties;
 import br.com.dadoscnpj.dto.CnpjResponse;
 import br.com.dadoscnpj.dto.ImportRow;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,17 +19,35 @@ class CnpjImportServiceTest {
 
     private FakeCnpjConsulta cnpjConsulta;
     private FakeRazaoSocialResolucao resolucao;
-    private CnpjImportService service;
+    private CnpjApiProperties cnpjApiProperties;
+
+    private CnpjImportService criarService() {
+        return new CnpjImportService(null, null, cnpjConsulta, resolucao, cnpjApiProperties);
+    }
 
     @BeforeEach
     void setUp() {
         cnpjConsulta = new FakeCnpjConsulta();
         resolucao = new FakeRazaoSocialResolucao();
-        service = new CnpjImportService(null, null, cnpjConsulta, resolucao);
+        cnpjApiProperties = pesquisaHabilitada();
+    }
+
+    private CnpjApiProperties pesquisaHabilitada() {
+        CnpjApiProperties properties = new CnpjApiProperties();
+        properties.setPesquisaRazaoSocialHabilitada(true);
+        properties.setToken("token-teste");
+        return properties;
+    }
+
+    private CnpjApiProperties pesquisaDesligada() {
+        CnpjApiProperties properties = new CnpjApiProperties();
+        properties.setPesquisaRazaoSocialHabilitada(false);
+        return properties;
     }
 
     @Test
     void deveConsultarPorCnpjValido() throws Exception {
+        CnpjImportService service = criarService();
         CnpjResponse response = new CnpjResponse();
         response.setRazaoSocial("EMPRESA TESTE");
         cnpjConsulta.enfileirarSucesso(response);
@@ -42,6 +61,7 @@ class CnpjImportServiceTest {
 
     @Test
     void deveTentarRazaoSocialQuandoCnpjInvalido() throws Exception {
+        CnpjImportService service = criarService();
         CnpjResponse response = new CnpjResponse();
         response.setRazaoSocial("PETROLEO BRASILEIRO S A PETROBRAS");
         cnpjConsulta.enfileirarErro(new CnpjClient.CnpjConsultaException("CNPJ não encontrado", null));
@@ -60,6 +80,7 @@ class CnpjImportServiceTest {
 
     @Test
     void deveTentarRazaoSocialQuandoCnpjNaoEncontrado() throws Exception {
+        CnpjImportService service = criarService();
         CnpjResponse response = new CnpjResponse();
         response.setRazaoSocial("EMPRESA TESTE LTDA");
         cnpjConsulta.enfileirarErro(new CnpjClient.CnpjConsultaException("CNPJ não encontrado na API pública", null));
@@ -76,6 +97,7 @@ class CnpjImportServiceTest {
 
     @Test
     void deveRetornarErroQuandoAmbosFalharem() throws Exception {
+        CnpjImportService service = criarService();
         cnpjConsulta.enfileirarErro(new CnpjClient.CnpjConsultaException("CNPJ não encontrado", null));
         resolucao.erro = new CnpjPesquisaClient.CnpjPesquisaException("Nenhum CNPJ encontrado");
 
@@ -89,6 +111,7 @@ class CnpjImportServiceTest {
 
     @Test
     void naoDeveConsultarCnpjDuplicadoNaMesmaImportacao() throws Exception {
+        CnpjImportService service = criarService();
         CnpjResponse response = new CnpjResponse();
         response.setRazaoSocial("EMPRESA TESTE");
         cnpjConsulta.enfileirarSucesso(response);
@@ -107,6 +130,7 @@ class CnpjImportServiceTest {
 
     @Test
     void naoDeveConsultarRazaoSocialDuplicadaNaMesmaImportacao() throws Exception {
+        CnpjImportService service = criarService();
         CnpjResponse response = new CnpjResponse();
         response.setRazaoSocial("PETROBRAS");
         resolucao.proximo = new CnpjResolucaoService.ResolucaoCnpj("33000167000101", null);
@@ -122,6 +146,19 @@ class CnpjImportServiceTest {
         assertTrue(segundo.getObservacao().contains("duplicado"));
         assertEquals(1, cnpjConsulta.chamadas);
         assertEquals(1, resolucao.chamadas);
+    }
+
+    @Test
+    void deveIgnorarLinhaSoComRazaoSocialQuandoPesquisaDesligada() {
+        cnpjApiProperties = pesquisaDesligada();
+        CnpjImportService service = criarService();
+
+        var resultado = service.processarLinha(new ImportRow("", "PETROBRAS"), 1);
+
+        assertEquals("ERRO", resultado.getStatusConsulta());
+        assertTrue(resultado.getErro().contains("razão social desligada"));
+        assertEquals(0, cnpjConsulta.chamadas);
+        assertEquals(0, resolucao.chamadas);
     }
 
     private static class FakeCnpjConsulta implements CnpjConsultaPort {

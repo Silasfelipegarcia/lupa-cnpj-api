@@ -51,6 +51,11 @@ public class CnpjPesquisaClient {
     }
 
     public List<String> buscarPorRazaoSocial(String razaoSocial) throws InterruptedException {
+        if (!properties.isPesquisaRazaoSocialAtiva()) {
+            throw new CnpjPesquisaException(
+                    "Busca por razão social está desabilitada. Informe o CNPJ na planilha.");
+        }
+
         if (!properties.isPesquisaHabilitada()) {
             throw new CnpjPesquisaException(
                     "Busca por razão social não está configurada no servidor. "

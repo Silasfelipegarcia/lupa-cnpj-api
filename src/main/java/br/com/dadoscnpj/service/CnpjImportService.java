@@ -1,5 +1,6 @@
 package br.com.dadoscnpj.service;
 
+import br.com.dadoscnpj.config.CnpjApiProperties;
 import br.com.dadoscnpj.client.CnpjClient;
 import br.com.dadoscnpj.client.CnpjPesquisaClient;
 import br.com.dadoscnpj.csv.CnpjPlanilhaReader;
@@ -31,15 +32,18 @@ public class CnpjImportService {
     private final CnpjCsvWriter csvWriter;
     private final CnpjConsultaPort cnpjClient;
     private final CnpjResolucaoPort resolucaoService;
+    private final CnpjApiProperties cnpjApiProperties;
 
     public CnpjImportService(CnpjPlanilhaReader planilhaReader,
                              CnpjCsvWriter csvWriter,
                              CnpjConsultaPort cnpjClient,
-                             CnpjResolucaoPort resolucaoService) {
+                             CnpjResolucaoPort resolucaoService,
+                             CnpjApiProperties cnpjApiProperties) {
         this.planilhaReader = planilhaReader;
         this.csvWriter = csvWriter;
         this.cnpjClient = cnpjClient;
         this.resolucaoService = resolucaoService;
+        this.cnpjApiProperties = cnpjApiProperties;
     }
 
     public List<ImportRow> lerLinhasDoArquivo(MultipartFile file) throws IOException {
@@ -79,8 +83,15 @@ public class CnpjImportService {
         try {
             normalizarLinha(linha);
 
-            if (!linha.temCnpj() && !linha.temRazaoSocial()) {
-                return CnpjResult.erro(linha, "Informe CNPJ ou razão social");
+            if (!linha.temCnpj()) {
+                if (!cnpjApiProperties.isPesquisaRazaoSocialAtiva()) {
+                    CnpjResult erro = CnpjResult.erro(linha,
+                            "Linha ignorada: informe o CNPJ (busca por razão social desligada).");
+                    return registrarCache(linha, erro, null, cachePorCnpj, cachePorRazaoSocial);
+                }
+                if (!linha.temRazaoSocial()) {
+                    return CnpjResult.erro(linha, "Informe CNPJ ou razão social");
+                }
             }
 
             CnpjResult duplicado = buscarDuplicado(linha, cachePorCnpj, cachePorRazaoSocial);
@@ -127,7 +138,7 @@ public class CnpjImportService {
                 }
             }
 
-            if (linha.temRazaoSocial()) {
+            if (cnpjApiProperties.isPesquisaRazaoSocialAtiva() && linha.temRazaoSocial()) {
                 String chaveRazao = chaveRazaoSocial(linha.getRazaoSocial());
                 CnpjResult razaoEmCache = cachePorRazaoSocial.get(chaveRazao);
                 if (razaoEmCache != null) {

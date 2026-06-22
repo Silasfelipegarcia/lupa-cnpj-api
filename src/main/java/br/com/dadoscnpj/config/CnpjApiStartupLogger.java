@@ -18,10 +18,12 @@ public class CnpjApiStartupLogger {
 
     @PostConstruct
     public void logarConfiguracao() {
-        if (properties.isPesquisaHabilitada()) {
+        if (properties.isPesquisaRazaoSocialAtiva()) {
             log.info("Busca por razão social habilitada (CNPJ.ws comercial)");
+        } else if (properties.isPesquisaRazaoSocialHabilitada()) {
+            log.warn("PESQUISA_RAZAO_SOCIAL=true mas CNPJ_WS_TOKEN não configurado. Busca por nome permanece desligada.");
         } else {
-            log.warn("Busca por razão social DESABILITADA. Configure CNPJ_WS_TOKEN no Railway para usar fallback por nome.");
+            log.info("Busca por razão social desligada. Apenas consultas por CNPJ serão processadas.");
         }
     }
 }

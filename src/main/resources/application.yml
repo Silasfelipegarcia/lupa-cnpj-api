@@ -38,6 +38,7 @@ cnpj:
     base-url: https://publica.cnpj.ws/cnpj
     pesquisa-url: https://comercial.cnpj.ws/v2/pesquisa
     token: ${CNPJ_WS_TOKEN:${CNPJ_API_TOKEN:}}
+    pesquisa-razao-social-habilitada: ${PESQUISA_RAZAO_SOCIAL:false}
     rate-limit-per-minute: 3
     timeout-seconds: 30
 
