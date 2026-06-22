@@ -53,7 +53,8 @@ public class CnpjPesquisaClient {
     public List<String> buscarPorRazaoSocial(String razaoSocial) throws InterruptedException {
         if (!properties.isPesquisaHabilitada()) {
             throw new CnpjPesquisaException(
-                    "Busca por razão social requer token da API CNPJ.ws. Configure cnpj.api.token ou informe o CNPJ na planilha.");
+                    "Busca por razão social não está configurada no servidor. "
+                            + "Informe um CNPJ válido na planilha ou configure CNPJ_WS_TOKEN no Railway.");
         }
 
         if (razaoSocial == null || razaoSocial.trim().length() < 3) {

@@ -24,6 +24,7 @@ public class CnpjExcelTemplateWriter {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(cabecalho[i]);
                 cell.setCellStyle(headerStyle);
+                sheet.setDefaultColumnStyle(i, criarEstiloTexto(workbook));
             }
 
             Object[][] exemplos = {
@@ -35,7 +36,9 @@ public class CnpjExcelTemplateWriter {
 
             for (int i = 0; i < exemplos.length; i++) {
                 Row row = sheet.createRow(i + 1);
-                row.createCell(0).setCellValue(String.valueOf(exemplos[i][0]));
+                Cell cnpjCell = row.createCell(0);
+                cnpjCell.setCellValue(String.valueOf(exemplos[i][0]));
+                cnpjCell.setCellStyle(criarEstiloTexto(workbook));
                 row.createCell(1).setCellValue(String.valueOf(exemplos[i][1]));
             }
 
@@ -62,6 +65,13 @@ public class CnpjExcelTemplateWriter {
         style.setFont(font);
         style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
+    }
+
+    private CellStyle criarEstiloTexto(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("@"));
         return style;
     }
 

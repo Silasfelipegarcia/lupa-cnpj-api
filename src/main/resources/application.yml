@@ -15,7 +15,7 @@ app:
     status-per-minute: 30
     download-per-hour: 10
     template-per-hour: 10
-    max-rows-per-file: 200
+    max-rows-per-file: 900
     max-queue-size: 10
     max-jobs-in-memory: 50
     max-active-jobs-per-ip: 1
@@ -37,7 +37,7 @@ cnpj:
   api:
     base-url: https://publica.cnpj.ws/cnpj
     pesquisa-url: https://comercial.cnpj.ws/v2/pesquisa
-    token: ${CNPJ_WS_TOKEN:}
+    token: ${CNPJ_WS_TOKEN:${CNPJ_API_TOKEN:}}
     rate-limit-per-minute: 3
     timeout-seconds: 30
 

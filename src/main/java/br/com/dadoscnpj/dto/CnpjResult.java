@@ -84,6 +84,37 @@ public class CnpjResult {
         return result;
     }
 
+    public static CnpjResult reutilizar(ImportRow linha, CnpjResult original) {
+        CnpjResult copia = new CnpjResult();
+        copia.setCnpj(original.getCnpj());
+        copia.setRazaoSocialInformada(nullSafe(linha.getRazaoSocial()));
+        copia.setRazaoSocial(original.getRazaoSocial());
+        copia.setNomeFantasia(original.getNomeFantasia());
+        copia.setSituacaoCadastral(original.getSituacaoCadastral());
+        copia.setTelefone1(original.getTelefone1());
+        copia.setTelefone2(original.getTelefone2());
+        copia.setEmail(original.getEmail());
+        copia.setLogradouro(original.getLogradouro());
+        copia.setNumero(original.getNumero());
+        copia.setComplemento(original.getComplemento());
+        copia.setBairro(original.getBairro());
+        copia.setCidade(original.getCidade());
+        copia.setUf(original.getUf());
+        copia.setCep(original.getCep());
+        copia.setCnaePrincipal(original.getCnaePrincipal());
+        copia.setStatusConsulta(original.getStatusConsulta());
+        copia.setErro(original.getErro());
+
+        String observacao = nullSafe(original.getObservacao());
+        if (!observacao.contains("duplicado")) {
+            observacao = observacao.isBlank()
+                    ? "Registro duplicado na planilha; resultado reutilizado"
+                    : observacao + "; Registro duplicado na planilha; resultado reutilizado";
+        }
+        copia.setObservacao(observacao);
+        return copia;
+    }
+
     private static String nullSafe(String value) {
         return value != null ? value : "";
     }

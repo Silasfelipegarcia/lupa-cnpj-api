@@ -1,6 +1,7 @@
 package br.com.dadoscnpj.csv;
 
 import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.util.CnpjEntradaNormalizer;
 import org.apache.poi.ss.usermodel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class CnpjExcelReader {
                 }
 
                 String[] linha = lerLinha(row);
-                String cnpj = parser.lerCampo(linha, indiceCnpj);
+                String cnpj = indiceCnpj >= 0 ? lerCelulaCnpj(row.getCell(indiceCnpj)) : "";
                 String razaoSocial = parser.lerCampoTexto(linha, indiceRazaoSocial);
 
                 if (parser.isLinhaInstrucao(razaoSocial) || parser.isLinhaInstrucao(cnpj)) {
@@ -73,6 +74,13 @@ public class CnpjExcelReader {
             log.info("Lidas {} linha(s) do Excel {}", resultado.size(), file.getOriginalFilename());
             return resultado;
         }
+    }
+
+    private String lerCelulaCnpj(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+        return CnpjEntradaNormalizer.normalizar(dataFormatter.formatCellValue(cell));
     }
 
     private String[] lerLinha(Row row) {

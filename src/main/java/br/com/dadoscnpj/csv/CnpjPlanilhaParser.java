@@ -1,6 +1,7 @@
 package br.com.dadoscnpj.csv;
 
 import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.util.CnpjEntradaNormalizer;
 import br.com.dadoscnpj.util.CnpjValidator;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +24,7 @@ public class CnpjPlanilhaParser {
         if (indice < 0 || indice >= linha.length) {
             return "";
         }
-        return extrairCnpj(linha[indice]);
+        return CnpjEntradaNormalizer.normalizar(linha[indice]);
     }
 
     public String lerCampoTexto(String[] linha, int indice) {
@@ -34,7 +35,7 @@ public class CnpjPlanilhaParser {
     }
 
     public ImportRow montarLinha(String cnpj, String razaoSocial) {
-        cnpj = extrairCnpj(cnpj);
+        cnpj = CnpjEntradaNormalizer.normalizar(cnpj);
         razaoSocial = razaoSocial != null ? razaoSocial.trim() : "";
 
         if (cnpj.isEmpty() && razaoSocial.isEmpty()) {
@@ -42,7 +43,7 @@ public class CnpjPlanilhaParser {
         }
 
         if (cnpj.isEmpty() && pareceCnpj(razaoSocial)) {
-            cnpj = CnpjValidator.removerMascara(razaoSocial);
+            cnpj = CnpjEntradaNormalizer.normalizar(razaoSocial);
             razaoSocial = "";
         }
 

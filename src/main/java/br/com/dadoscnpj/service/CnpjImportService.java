@@ -7,6 +7,7 @@ import br.com.dadoscnpj.csv.CnpjCsvWriter;
 import br.com.dadoscnpj.dto.CnpjResponse;
 import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.util.CnpjEntradaNormalizer;
 import br.com.dadoscnpj.util.CnpjValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 @Service
@@ -46,6 +49,8 @@ public class CnpjImportService {
     public List<CnpjResult> processarLinhas(List<ImportRow> linhas, Consumer<ProgressoCnpj> onProgress)
             throws InterruptedException, IOException {
         List<CnpjResult> resultados = new ArrayList<>();
+        Map<String, CnpjResult> cachePorCnpj = new HashMap<>();
+        Map<String, CnpjResult> cachePorRazaoSocial = new HashMap<>();
         int total = linhas.size();
         int atual = 0;
 
@@ -53,7 +58,7 @@ public class CnpjImportService {
             atual++;
             log.info("Processando linha {}/{}", atual, total);
 
-            CnpjResult resultado = processarLinha(linha, atual);
+            CnpjResult resultado = processarLinha(linha, atual, cachePorCnpj, cachePorRazaoSocial);
             resultados.add(resultado);
             onProgress.accept(new ProgressoCnpj(
                     "SUCESSO".equals(resultado.getStatusConsulta()) ? "SUCESSO" : "ERRO",
@@ -64,6 +69,13 @@ public class CnpjImportService {
     }
 
     CnpjResult processarLinha(ImportRow linha, int numeroLinha) {
+        return processarLinha(linha, numeroLinha, new HashMap<>(), new HashMap<>());
+    }
+
+    CnpjResult processarLinha(ImportRow linha,
+                              int numeroLinha,
+                              Map<String, CnpjResult> cachePorCnpj,
+                              Map<String, CnpjResult> cachePorRazaoSocial) {
         try {
             normalizarLinha(linha);
 
@@ -71,31 +83,57 @@ public class CnpjImportService {
                 return CnpjResult.erro(linha, "Informe CNPJ ou razão social");
             }
 
+            CnpjResult duplicado = buscarDuplicado(linha, cachePorCnpj, cachePorRazaoSocial);
+            if (duplicado != null) {
+                log.info("Linha {} duplicada; reutilizando resultado anterior", numeroLinha);
+                return duplicado;
+            }
+
             List<String> avisos = new ArrayList<>();
             boolean tentouCnpj = false;
 
             if (linha.temCnpj()) {
                 tentouCnpj = true;
-                String cnpjNorm = CnpjValidator.normalizarParaApi(linha.getCnpj());
+                String cnpjNorm = CnpjEntradaNormalizer.normalizar(linha.getCnpj());
+                linha.setCnpj(cnpjNorm);
                 String erroValidacao = CnpjValidator.validar(cnpjNorm);
 
-                if (erroValidacao == null) {
+                if (cnpjNorm.matches("\\d{14}")) {
+                    CnpjResult emCache = cachePorCnpj.get(cnpjNorm);
+                    if (emCache != null) {
+                        return CnpjResult.reutilizar(linha, emCache);
+                    }
+
                     try {
                         log.info("Consultando CNPJ {} (linha {})", CnpjValidator.formatar(cnpjNorm), numeroLinha);
                         CnpjResponse response = cnpjClient.consultar(cnpjNorm);
+                        if (erroValidacao != null) {
+                            avisos.add("CNPJ com dígitos verificadores incorretos, mas encontrado na base");
+                        }
                         adicionarAvisoRazaoSocialDivergente(avisos, linha, response);
-                        return CnpjResult.sucesso(linha, cnpjNorm, response, montarObservacao(avisos));
+                        return registrarCache(linha, CnpjResult.sucesso(linha, cnpjNorm, response, montarObservacao(avisos)),
+                                cnpjNorm, cachePorCnpj, cachePorRazaoSocial);
                     } catch (CnpjClient.CnpjConsultaException e) {
                         log.warn("Falha na consulta por CNPJ (linha {}): {}", numeroLinha, e.getMessage());
-                        avisos.add("CNPJ não encontrado na consulta direta");
+                        if (erroValidacao != null) {
+                            avisos.add("CNPJ informado inválido");
+                        } else {
+                            avisos.add("CNPJ não encontrado na consulta direta");
+                        }
                     }
-                } else {
+                } else if (erroValidacao != null) {
                     log.warn("CNPJ inválido na linha {}: {}", numeroLinha, erroValidacao);
                     avisos.add("CNPJ informado inválido");
                 }
             }
 
             if (linha.temRazaoSocial()) {
+                String chaveRazao = chaveRazaoSocial(linha.getRazaoSocial());
+                CnpjResult razaoEmCache = cachePorRazaoSocial.get(chaveRazao);
+                if (razaoEmCache != null) {
+                    return CnpjResult.reutilizar(linha, razaoEmCache);
+                }
+
                 try {
                     CnpjResolucaoService.ResolucaoCnpj resolucao =
                             resolucaoService.resolverPorRazaoSocial(linha.getRazaoSocial());
@@ -106,10 +144,17 @@ public class CnpjImportService {
                         avisos.add("Dados obtidos por busca na razão social");
                     }
 
+                    CnpjResult emCache = cachePorCnpj.get(cnpjResolvido);
+                    if (emCache != null) {
+                        return registrarCache(linha, CnpjResult.reutilizar(linha, emCache),
+                                cnpjResolvido, cachePorCnpj, cachePorRazaoSocial);
+                    }
+
                     log.info("Consultando CNPJ {} via razão social (linha {})",
                             CnpjValidator.formatar(cnpjResolvido), numeroLinha);
                     CnpjResponse response = cnpjClient.consultar(cnpjResolvido);
-                    return CnpjResult.sucesso(linha, cnpjResolvido, response, montarObservacao(avisos));
+                    return registrarCache(linha, CnpjResult.sucesso(linha, cnpjResolvido, response, montarObservacao(avisos)),
+                            cnpjResolvido, cachePorCnpj, cachePorRazaoSocial);
                 } catch (CnpjPesquisaClient.CnpjPesquisaException e) {
                     log.error("Falha na pesquisa por razão social (linha {}): {}", numeroLinha, e.getMessage());
                     avisos.add(e.getMessage());
@@ -119,7 +164,9 @@ public class CnpjImportService {
                 }
             }
 
-            return CnpjResult.erro(linha, montarMensagemErro(avisos));
+            CnpjResult erro = CnpjResult.erro(linha, montarMensagemErro(avisos));
+            registrarCache(linha, erro, chaveCnpj(linha), cachePorCnpj, cachePorRazaoSocial);
+            return erro;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return CnpjResult.erro(linha, "Processamento interrompido");
@@ -133,11 +180,77 @@ public class CnpjImportService {
         return csvWriter.escrever(resultados);
     }
 
+    private CnpjResult buscarDuplicado(ImportRow linha,
+                                       Map<String, CnpjResult> cachePorCnpj,
+                                       Map<String, CnpjResult> cachePorRazaoSocial) {
+        String cnpj = chaveCnpj(linha);
+        if (cnpj != null) {
+            CnpjResult anterior = cachePorCnpj.get(cnpj);
+            if (anterior != null) {
+                return CnpjResult.reutilizar(linha, anterior);
+            }
+        }
+
+        if (linha.temRazaoSocial()) {
+            CnpjResult anterior = cachePorRazaoSocial.get(chaveRazaoSocial(linha.getRazaoSocial()));
+            if (anterior != null) {
+                return CnpjResult.reutilizar(linha, anterior);
+            }
+        }
+
+        return null;
+    }
+
+    private CnpjResult registrarCache(ImportRow linha,
+                                        CnpjResult resultado,
+                                        String cnpjChave,
+                                        Map<String, CnpjResult> cachePorCnpj,
+                                        Map<String, CnpjResult> cachePorRazaoSocial) {
+        if (cnpjChave != null && cnpjChave.matches("\\d{14}")) {
+            cachePorCnpj.put(cnpjChave, resultado);
+        } else {
+            String cnpjResultado = extrairCnpjDoResultado(resultado);
+            if (cnpjResultado != null) {
+                cachePorCnpj.put(cnpjResultado, resultado);
+            }
+        }
+
+        if (linha.temRazaoSocial()) {
+            cachePorRazaoSocial.put(chaveRazaoSocial(linha.getRazaoSocial()), resultado);
+        }
+
+        return resultado;
+    }
+
+    private String chaveCnpj(ImportRow linha) {
+        if (!linha.temCnpj()) {
+            return null;
+        }
+        String cnpj = CnpjEntradaNormalizer.normalizar(linha.getCnpj());
+        return cnpj.matches("\\d{14}") ? cnpj : null;
+    }
+
+    private String extrairCnpjDoResultado(CnpjResult resultado) {
+        if (resultado.getCnpj() == null || resultado.getCnpj().isBlank()) {
+            return null;
+        }
+        String cnpj = CnpjValidator.removerMascara(resultado.getCnpj());
+        return cnpj.matches("\\d{14}") ? cnpj : null;
+    }
+
+    private String chaveRazaoSocial(String razaoSocial) {
+        return normalizarTexto(razaoSocial);
+    }
+
     private void normalizarLinha(ImportRow linha) {
+        if (linha.temCnpj()) {
+            linha.setCnpj(CnpjEntradaNormalizer.normalizar(linha.getCnpj()));
+        }
+
         if (!linha.temCnpj() && linha.temRazaoSocial()) {
-            String digits = CnpjValidator.removerMascara(linha.getRazaoSocial());
-            if (digits.matches("\\d{14}")) {
-                linha.setCnpj(digits);
+            String normalizado = CnpjEntradaNormalizer.normalizar(linha.getRazaoSocial());
+            if (normalizado.matches("\\d{14}")) {
+                linha.setCnpj(normalizado);
                 linha.setRazaoSocial("");
             }
         }
