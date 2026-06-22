@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: ${DB_URL:${MYSQL_URL:}}
+    username: ${DB_USERNAME:${MYSQLUSER:}}
+    password: ${DB_PASSWORD:${MYSQLPASSWORD:}}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  cors-allowed-origins: ${ALLOWED_ORIGINS:https://lupa-cnpj.vercel.app,http://localhost:4200,https://*.vercel.app}
+
+cnpj:
+  api:
+    token: ${CNPJ_WS_TOKEN:${CNPJ_API_TOKEN:}}
+    pesquisa-razao-social-habilitada: ${PESQUISA_RAZAO_SOCIAL:false}

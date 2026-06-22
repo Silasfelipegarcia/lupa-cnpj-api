@@ -1,6 +1,6 @@
 CREATE TABLE import_jobs (
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users (id),
+    id BINARY(16) NOT NULL PRIMARY KEY,
+    user_id BINARY(16) NOT NULL,
     arquivo VARCHAR(255) NOT NULL,
     status VARCHAR(20) NOT NULL,
     total INT NOT NULL DEFAULT 0,
@@ -9,18 +9,19 @@ CREATE TABLE import_jobs (
     erros INT NOT NULL DEFAULT 0,
     mensagem TEXT,
     linhas_json TEXT NOT NULL,
-    resultado_csv BYTEA,
-    cancelamento_solicitado BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    completed_at TIMESTAMPTZ
+    resultado_csv LONGBLOB,
+    cancelamento_solicitado TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    completed_at TIMESTAMP(6) NULL,
+    CONSTRAINT fk_import_jobs_user FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
 CREATE INDEX idx_import_jobs_user_created ON import_jobs (user_id, created_at DESC);
 CREATE INDEX idx_import_jobs_status ON import_jobs (status);
 
 CREATE TABLE import_results (
-    id BIGSERIAL PRIMARY KEY,
-    job_id UUID NOT NULL REFERENCES import_jobs (id) ON DELETE CASCADE,
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    job_id BINARY(16) NOT NULL,
     linha_numero INT NOT NULL,
     cnpj VARCHAR(20),
     razao_social_informada VARCHAR(500),
@@ -40,7 +41,8 @@ CREATE TABLE import_results (
     cnae_principal VARCHAR(500),
     observacao TEXT,
     status_consulta VARCHAR(20) NOT NULL,
-    erro TEXT
+    erro TEXT,
+    CONSTRAINT fk_import_results_job FOREIGN KEY (job_id) REFERENCES import_jobs (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_import_results_job ON import_results (job_id);
