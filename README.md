@@ -13,11 +13,14 @@ Parte do projeto **LupaCNPJ** — frontend em [lupa-cnpj](https://github.com/Sil
 
 ## Executar localmente
 
+Suba o Postgres e rode a API:
+
 ```bash
+docker compose up -d
 mvn spring-boot:run
 ```
 
-API em `http://localhost:8080`. Por padrão usa H2 em memória com migrações Flyway.
+API em `http://localhost:8080`.
 
 ## Variáveis de ambiente
 
