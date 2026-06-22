@@ -23,7 +23,7 @@ API em `http://localhost:8080`.
 | Variável | Descrição | Padrão |
 |----------|-----------|--------|
 | `PORT` | Porta do servidor (Railway define automaticamente) | `8080` |
-| `ALLOWED_ORIGINS` | Origens CORS separadas por vírgula | `http://localhost:4200` |
+| `ALLOWED_ORIGINS` | Origens CORS separadas por vírgula | `http://localhost:4200,https://lupa-cnpj.vercel.app` |
 | `CNPJ_WS_TOKEN` | Token para busca por razão social (opcional) | — |
 
 ## Deploy no Railway
@@ -34,7 +34,7 @@ API em `http://localhost:8080`.
    - `ALLOWED_ORIGINS` = URL do frontend Vercel (ex: `https://lupa-cnpj.vercel.app`)
    - `CNPJ_WS_TOKEN` = (opcional) token CNPJ.ws comercial
 4. Railway detecta o `Dockerfile` e faz o deploy automaticamente
-5. Copie a URL pública gerada (ex: `https://lupa-cnpj-api.up.railway.app`) e configure no frontend
+5. Copie a URL pública gerada (ex: `https://lupa-cnpj-api-production.up.railway.app`) e configure no frontend
 
 ## Endpoints
 

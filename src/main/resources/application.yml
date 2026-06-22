@@ -9,7 +9,7 @@ server:
   connection-timeout: 10s
 
 app:
-  cors-allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+  cors-allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200,https://lupa-cnpj.vercel.app,https://*.vercel.app}
   security:
     import-per-hour: 5
     status-per-minute: 30

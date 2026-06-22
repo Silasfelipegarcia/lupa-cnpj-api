@@ -24,7 +24,8 @@ public class WebConfig {
                 registry.addMapping("/cnpj/**")
                         .allowedOriginPatterns(appProperties.getCorsAllowedOriginsArray())
                         .allowedMethods("GET", "POST", "DELETE", "OPTIONS")
-                        .allowedHeaders("*");
+                        .allowedHeaders("*")
+                        .maxAge(3600);
             }
         };
     }
