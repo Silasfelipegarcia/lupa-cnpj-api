@@ -9,7 +9,7 @@ public class SecurityProperties {
     private int statusPerMinute = 30;
     private int downloadPerHour = 10;
     private int templatePerHour = 10;
-    private int maxRowsPerFile = 100;
+    private int maxRowsPerFile = 200;
     private int maxQueueSize = 10;
     private int maxJobsInMemory = 50;
     private int maxActiveJobsPerIp = 1;
