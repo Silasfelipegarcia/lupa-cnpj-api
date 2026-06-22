@@ -1,11 +1,12 @@
 package br.com.dadoscnpj.service;
 
 import br.com.dadoscnpj.config.SecurityProperties;
-import br.com.dadoscnpj.csv.CnpjCsvWriter;
-import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportJobStatus;
+import br.com.dadoscnpj.dto.ImportJobSummaryResponse;
 import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.entity.ImportJobEntity;
+import br.com.dadoscnpj.exception.ForbiddenException;
 import br.com.dadoscnpj.model.ImportJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
@@ -37,22 +39,82 @@ public class ImportJobQueueService {
         this.securityProperties = securityProperties;
     }
 
-    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, String clientIp) {
-        validarLimites(nomeArquivo, linhas, clientIp);
+    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
+        validarLimites(nomeArquivo, linhas, userId);
 
-        ImportJob job = new ImportJob(nomeArquivo, linhas, clientIp);
+        ImportJob job = new ImportJob(nomeArquivo, linhas, userId);
         jobStore.salvar(job);
         fila.offer(job.getId());
 
-        log.info("Job {} enfileirado com {} linha(s). Posição na fila: {}",
-                job.getId(), linhas.size(), calcularPosicaoFila(job.getId()));
+        log.info("Job {} enfileirado para usuário {} com {} linha(s). Posição na fila: {}",
+                job.getId(), userId, linhas.size(), calcularPosicaoFila(job.getId()));
 
         importJobExecutor.submit(this::processarProximoDaFila);
 
         return toResponse(job);
     }
 
-    private void validarLimites(String nomeArquivo, List<ImportRow> linhas, String clientIp) {
+    public ImportJobResponse consultarStatus(String jobId, UUID userId) {
+        ImportJob job = buscarJobDoUsuario(jobId, userId);
+        return toResponse(job);
+    }
+
+    public ImportJobResponse cancelar(String jobId, UUID userId) {
+        ImportJob job = buscarJobDoUsuario(jobId, userId);
+
+        if (job.getStatus() == ImportJobStatus.CONCLUIDO
+                || job.getStatus() == ImportJobStatus.ERRO
+                || job.getStatus() == ImportJobStatus.CANCELADO) {
+            return toResponse(job);
+        }
+
+        job.solicitarCancelamento();
+
+        if (job.getStatus() == ImportJobStatus.NA_FILA) {
+            removerDaFila(job.getId());
+            job.setStatus(ImportJobStatus.CANCELADO);
+            job.setMensagem("Consulta cancelada pelo usuário");
+            job.setConcluidoEm(Instant.now());
+            jobStore.salvar(job);
+            log.info("Job {} removido da fila por cancelamento", job.getId());
+        } else {
+            job.setMensagem("Cancelando consulta...");
+            jobStore.salvar(job);
+            log.info("Cancelamento solicitado para job {} em processamento", job.getId());
+        }
+
+        return toResponse(job);
+    }
+
+    public byte[] baixarResultado(String jobId, UUID userId) {
+        ImportJob job = buscarJobDoUsuario(jobId, userId);
+
+        if (job.getStatus() != ImportJobStatus.CONCLUIDO && job.getStatus() != ImportJobStatus.CANCELADO) {
+            throw new IllegalStateException("Job ainda não foi concluído");
+        }
+        if (job.getResultado() == null) {
+            throw new IllegalStateException("Resultado do job não disponível");
+        }
+        return job.getResultado();
+    }
+
+    public List<ImportJobSummaryResponse> listarHistorico(UUID userId, int limite) {
+        return jobStore.listarHistorico(userId, limite).stream()
+                .map(ImportJobSummaryResponse::from)
+                .toList();
+    }
+
+    public ImportJobResponse consultarHistoricoDetalhe(String jobId, UUID userId) {
+        ImportJob job = buscarJobDoUsuario(jobId, userId);
+        return toResponse(job);
+    }
+
+    private ImportJob buscarJobDoUsuario(String jobId, UUID userId) {
+        return jobStore.buscarDoUsuario(jobId, userId)
+                .orElseThrow(() -> new ForbiddenException("Você não tem permissão para acessar esta consulta"));
+    }
+
+    private void validarLimites(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
         if (linhas.isEmpty()) {
             throw new IllegalArgumentException("O arquivo não contém linhas válidas para importação.");
         }
@@ -73,55 +135,10 @@ public class ImportJobQueueService {
                     "O servidor está com muitas consultas em andamento. Tente novamente mais tarde.");
         }
 
-        if (jobStore.contarAtivosPorIp(clientIp) >= securityProperties.getMaxActiveJobsPerIp()) {
+        if (jobStore.contarAtivosPorUsuario(userId) >= securityProperties.getMaxActiveJobsPerUser()) {
             throw new IllegalStateException(
                     "Você já possui uma importação em andamento. Aguarde a conclusão antes de enviar outra.");
         }
-    }
-
-    public ImportJobResponse consultarStatus(String jobId) {
-        ImportJob job = jobStore.buscar(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job não encontrado: " + jobId));
-        return toResponse(job);
-    }
-
-    public ImportJobResponse cancelar(String jobId) {
-        ImportJob job = jobStore.buscar(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job não encontrado: " + jobId));
-
-        if (job.getStatus() == ImportJobStatus.CONCLUIDO
-                || job.getStatus() == ImportJobStatus.ERRO
-                || job.getStatus() == ImportJobStatus.CANCELADO) {
-            return toResponse(job);
-        }
-
-        job.solicitarCancelamento();
-
-        if (job.getStatus() == ImportJobStatus.NA_FILA) {
-            removerDaFila(job.getId());
-            job.setStatus(ImportJobStatus.CANCELADO);
-            job.setMensagem("Consulta cancelada pelo usuário");
-            job.setConcluidoEm(Instant.now());
-            log.info("Job {} removido da fila por cancelamento", job.getId());
-        } else {
-            job.setMensagem("Cancelando consulta...");
-            log.info("Cancelamento solicitado para job {} em processamento", job.getId());
-        }
-
-        return toResponse(job);
-    }
-
-    public byte[] baixarResultado(String jobId) {
-        ImportJob job = jobStore.buscar(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job não encontrado: " + jobId));
-
-        if (job.getStatus() != ImportJobStatus.CONCLUIDO && job.getStatus() != ImportJobStatus.CANCELADO) {
-            throw new IllegalStateException("Job ainda não foi concluído");
-        }
-        if (job.getResultado() == null) {
-            throw new IllegalStateException("Resultado do job não disponível");
-        }
-        return job.getResultado();
     }
 
     private void processarProximoDaFila() {
@@ -139,10 +156,11 @@ public class ImportJobQueueService {
         try {
             job.setStatus(ImportJobStatus.PROCESSANDO);
             job.setMensagem("Processamento iniciado");
+            jobStore.salvar(job);
 
             log.info("Iniciando job {} ({} CNPJs)", job.getId(), job.getTotal());
 
-            List<CnpjResult> resultados = cnpjImportService.processarLinhas(
+            List<br.com.dadoscnpj.dto.CnpjResult> resultados = cnpjImportService.processarLinhas(
                     job.getLinhas(),
                     progresso -> {
                         job.adicionarResultado(progresso.resultado());
@@ -154,6 +172,7 @@ public class ImportJobQueueService {
                         }
                         job.setMensagem(String.format("Consultando %d de %d (%d%%)",
                                 job.getProcessados(), job.getTotal(), job.getPercentual()));
+                        jobStore.salvarResultadoLinha(job, job.getProcessados(), progresso.resultado());
                     },
                     () -> !job.isCancelamentoSolicitado());
 
@@ -175,11 +194,13 @@ public class ImportJobQueueService {
                 job.setConcluidoEm(Instant.now());
                 log.info("Job {} concluído com sucesso", job.getId());
             }
+            jobStore.salvar(job);
         } catch (Exception e) {
             log.error("Falha no job {}: {}", job.getId(), e.getMessage(), e);
             job.setStatus(ImportJobStatus.ERRO);
             job.setMensagem("Erro no processamento: " + e.getMessage());
             job.setConcluidoEm(Instant.now());
+            jobStore.salvar(job);
         } finally {
             if (!fila.isEmpty()) {
                 importJobExecutor.submit(this::processarProximoDaFila);
@@ -216,6 +237,8 @@ public class ImportJobQueueService {
                 ? calcularPosicaoFila(job.getId()) : 0);
         response.setMensagem(job.getMensagem());
         response.setResultados(job.getResultados());
+        response.setCreatedAt(job.getCriadoEm());
+        response.setCompletedAt(job.getConcluidoEm());
         return response;
     }
 }

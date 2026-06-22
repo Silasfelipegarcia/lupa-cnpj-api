@@ -1,38 +1,55 @@
 package br.com.dadoscnpj.dto;
 
+import br.com.dadoscnpj.entity.ImportJobEntity;
+
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.UUID;
 
-public class ImportJobResponse {
+public class ImportJobSummaryResponse {
 
-    private String jobId;
-    private ImportJobStatus status;
+    private UUID jobId;
+    private String status;
     private String arquivo;
     private int total;
     private int processados;
     private int sucesso;
     private int erros;
     private int percentual;
-    private int posicaoFila;
     private String mensagem;
     private Instant createdAt;
     private Instant completedAt;
-    private List<CnpjResult> resultados = new ArrayList<>();
 
-    public String getJobId() {
+    public static ImportJobSummaryResponse from(ImportJobEntity entity) {
+        ImportJobSummaryResponse response = new ImportJobSummaryResponse();
+        response.setJobId(entity.getId());
+        response.setStatus(entity.getStatus());
+        response.setArquivo(entity.getArquivo());
+        response.setTotal(entity.getTotal());
+        response.setProcessados(entity.getProcessados());
+        response.setSucesso(entity.getSucesso());
+        response.setErros(entity.getErros());
+        response.setPercentual(entity.getTotal() == 0
+                ? 0
+                : (int) Math.round((entity.getProcessados() * 100.0) / entity.getTotal()));
+        response.setMensagem(entity.getMensagem());
+        response.setCreatedAt(entity.getCreatedAt());
+        response.setCompletedAt(entity.getCompletedAt());
+        return response;
+    }
+
+    public UUID getJobId() {
         return jobId;
     }
 
-    public void setJobId(String jobId) {
+    public void setJobId(UUID jobId) {
         this.jobId = jobId;
     }
 
-    public ImportJobStatus getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(ImportJobStatus status) {
+    public void setStatus(String status) {
         this.status = status;
     }
 
@@ -84,28 +101,12 @@ public class ImportJobResponse {
         this.percentual = percentual;
     }
 
-    public int getPosicaoFila() {
-        return posicaoFila;
-    }
-
-    public void setPosicaoFila(int posicaoFila) {
-        this.posicaoFila = posicaoFila;
-    }
-
     public String getMensagem() {
         return mensagem;
     }
 
     public void setMensagem(String mensagem) {
         this.mensagem = mensagem;
-    }
-
-    public List<CnpjResult> getResultados() {
-        return resultados;
-    }
-
-    public void setResultados(List<CnpjResult> resultados) {
-        this.resultados = resultados;
     }
 
     public Instant getCreatedAt() {

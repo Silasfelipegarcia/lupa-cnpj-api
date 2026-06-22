@@ -1,10 +1,13 @@
 package br.com.dadoscnpj.controller;
 
+import br.com.dadoscnpj.exception.ForbiddenException;
 import br.com.dadoscnpj.exception.TooManyRequestsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -15,6 +18,21 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, String>> handleForbidden(ForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("erro", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("erro", "Acesso negado"));
+    }
+
+    @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotAuthenticated(AuthenticationCredentialsNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("erro", "Não autenticado"));
+    }
 
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException ex) {

@@ -9,10 +9,12 @@ public class SecurityProperties {
     private int statusPerMinute = 30;
     private int downloadPerHour = 10;
     private int templatePerHour = 10;
+    private int authPerMinute = 10;
     private int maxRowsPerFile = 200;
     private int maxQueueSize = 10;
     private int maxJobsInMemory = 50;
     private int maxActiveJobsPerIp = 1;
+    private int maxActiveJobsPerUser = 1;
     private int jobTtlHours = 24;
 
     public int getImportPerHour() {
@@ -47,6 +49,14 @@ public class SecurityProperties {
         this.templatePerHour = templatePerHour;
     }
 
+    public int getAuthPerMinute() {
+        return authPerMinute;
+    }
+
+    public void setAuthPerMinute(int authPerMinute) {
+        this.authPerMinute = authPerMinute;
+    }
+
     public int getMaxRowsPerFile() {
         return maxRowsPerFile;
     }
@@ -77,6 +87,14 @@ public class SecurityProperties {
 
     public void setMaxActiveJobsPerIp(int maxActiveJobsPerIp) {
         this.maxActiveJobsPerIp = maxActiveJobsPerIp;
+    }
+
+    public int getMaxActiveJobsPerUser() {
+        return maxActiveJobsPerUser;
+    }
+
+    public void setMaxActiveJobsPerUser(int maxActiveJobsPerUser) {
+        this.maxActiveJobsPerUser = maxActiveJobsPerUser;
     }
 
     public int getJobTtlHours() {

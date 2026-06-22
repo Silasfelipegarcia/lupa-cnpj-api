@@ -13,8 +13,8 @@ import java.util.UUID;
 public class ImportJob {
 
     private final String id;
+    private final UUID userId;
     private final String arquivo;
-    private final String clientIp;
     private final List<ImportRow> linhas;
     private final Instant criadoEm;
     private final List<CnpjResult> resultados = Collections.synchronizedList(new ArrayList<>());
@@ -28,24 +28,32 @@ public class ImportJob {
     private byte[] resultado;
     private Instant concluidoEm;
 
-    public ImportJob(String arquivo, List<ImportRow> linhas, String clientIp) {
+    public ImportJob(String arquivo, List<ImportRow> linhas, UUID userId) {
         this.id = UUID.randomUUID().toString();
+        this.userId = userId;
         this.arquivo = arquivo;
-        this.clientIp = clientIp != null ? clientIp : "desconhecido";
         this.linhas = new ArrayList<>(linhas);
         this.criadoEm = Instant.now();
+    }
+
+    public ImportJob(UUID id, UUID userId, String arquivo, List<ImportRow> linhas, Instant criadoEm) {
+        this.id = id.toString();
+        this.userId = userId;
+        this.arquivo = arquivo;
+        this.linhas = new ArrayList<>(linhas);
+        this.criadoEm = criadoEm;
     }
 
     public String getId() {
         return id;
     }
 
-    public String getArquivo() {
-        return arquivo;
+    public UUID getUserId() {
+        return userId;
     }
 
-    public String getClientIp() {
-        return clientIp;
+    public String getArquivo() {
+        return arquivo;
     }
 
     public List<ImportRow> getLinhas() {
@@ -72,12 +80,20 @@ public class ImportJob {
         return cancelamentoSolicitado;
     }
 
+    public void setCancelamentoSolicitado(boolean cancelamentoSolicitado) {
+        this.cancelamentoSolicitado = cancelamentoSolicitado;
+    }
+
     public int getTotal() {
         return linhas.size();
     }
 
     public int getProcessados() {
         return processados;
+    }
+
+    public void setProcessados(int processados) {
+        this.processados = processados;
     }
 
     public void incrementarProcessados() {
@@ -88,12 +104,20 @@ public class ImportJob {
         return sucesso;
     }
 
+    public void setSucesso(int sucesso) {
+        this.sucesso = sucesso;
+    }
+
     public void incrementarSucesso() {
         this.sucesso++;
     }
 
     public int getErros() {
         return erros;
+    }
+
+    public void setErros(int erros) {
+        this.erros = erros;
     }
 
     public void incrementarErros() {
@@ -126,6 +150,13 @@ public class ImportJob {
 
     public void adicionarResultado(CnpjResult resultado) {
         resultados.add(resultado);
+    }
+
+    public void substituirResultados(List<CnpjResult> novos) {
+        synchronized (resultados) {
+            resultados.clear();
+            resultados.addAll(novos);
+        }
     }
 
     public List<CnpjResult> getResultados() {

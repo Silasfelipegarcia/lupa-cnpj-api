@@ -4,8 +4,9 @@ import br.com.dadoscnpj.config.CnpjApiProperties;
 import br.com.dadoscnpj.csv.CnpjExcelTemplateWriter;
 import br.com.dadoscnpj.dto.CnpjConfigResponse;
 import br.com.dadoscnpj.dto.ImportJobResponse;
+import br.com.dadoscnpj.dto.ImportJobSummaryResponse;
 import br.com.dadoscnpj.dto.ImportRow;
-import br.com.dadoscnpj.security.RateLimitFilter;
+import br.com.dadoscnpj.security.SecurityUtils;
 import br.com.dadoscnpj.service.CnpjImportService;
 import br.com.dadoscnpj.service.ImportJobQueueService;
 import org.slf4j.Logger;
@@ -25,11 +26,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/cnpj")
@@ -59,8 +59,7 @@ public class CnpjImportController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ImportJobResponse> importar(@RequestParam("file") MultipartFile file,
-                                                      HttpServletRequest request) throws Exception {
+    public ResponseEntity<ImportJobResponse> importar(@RequestParam("file") MultipartFile file) throws Exception {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -74,12 +73,12 @@ public class CnpjImportController {
             throw new IllegalArgumentException("Formato não suportado. Use CSV ou Excel (.xlsx).");
         }
 
-        log.info("Recebido arquivo para importação: {} ({} bytes)",
-                nomeArquivo, file.getSize());
+        UUID userId = SecurityUtils.currentUserId();
+        log.info("Recebido arquivo para importação: {} ({} bytes) do usuário {}",
+                nomeArquivo, file.getSize(), userId);
 
         List<ImportRow> linhas = cnpjImportService.lerLinhasDoArquivo(file);
-        String clientIp = (String) request.getAttribute(RateLimitFilter.CLIENT_IP_ATTRIBUTE);
-        ImportJobResponse job = jobQueueService.enfileirar(nomeArquivo, linhas, clientIp);
+        ImportJobResponse job = jobQueueService.enfileirar(nomeArquivo, linhas, userId);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(job);
     }
@@ -95,19 +94,34 @@ public class CnpjImportController {
                 .body(new ByteArrayResource(excel));
     }
 
+    @GetMapping("/import/historico")
+    public ResponseEntity<List<ImportJobSummaryResponse>> historico() {
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(jobQueueService.listarHistorico(userId, 50));
+    }
+
+    @GetMapping("/import/historico/{jobId}")
+    public ResponseEntity<ImportJobResponse> historicoDetalhe(@PathVariable String jobId) {
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(jobQueueService.consultarHistoricoDetalhe(jobId, userId));
+    }
+
     @GetMapping("/import/{jobId}/status")
     public ResponseEntity<ImportJobResponse> status(@PathVariable String jobId) {
-        return ResponseEntity.ok(jobQueueService.consultarStatus(jobId));
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(jobQueueService.consultarStatus(jobId, userId));
     }
 
     @DeleteMapping("/import/{jobId}")
     public ResponseEntity<ImportJobResponse> cancelar(@PathVariable String jobId) {
-        return ResponseEntity.ok(jobQueueService.cancelar(jobId));
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(jobQueueService.cancelar(jobId, userId));
     }
 
     @GetMapping("/import/{jobId}/download")
     public ResponseEntity<Resource> download(@PathVariable String jobId) {
-        byte[] csvResultado = jobQueueService.baixarResultado(jobId);
+        UUID userId = SecurityUtils.currentUserId();
+        byte[] csvResultado = jobQueueService.baixarResultado(jobId, userId);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String nomeArquivo = "cnpj_resultado_" + timestamp + ".csv";

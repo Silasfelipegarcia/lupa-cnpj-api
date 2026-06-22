@@ -43,7 +43,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
-        if (!path.startsWith("/cnpj")) {
+        if (!path.startsWith("/cnpj") && !path.startsWith("/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -88,6 +88,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("DELETE".equalsIgnoreCase(method) && path.matches("/cnpj/import/[^/]+")) {
             return new RateLimitRule(securityProperties.getStatusPerMinute(), MINUTE_MS, 60);
         }
+        if ("POST".equalsIgnoreCase(method) && path.matches("/auth/(login|register)")) {
+            return new RateLimitRule(securityProperties.getAuthPerMinute(), MINUTE_MS, 60);
+        }
         return null;
     }
 
@@ -100,6 +103,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if (path.matches("/cnpj/import/[^/]+") && "DELETE".equalsIgnoreCase(method)) {
             return clientIp + ":cancel";
+        }
+        if (path.matches("/auth/(login|register)")) {
+            return clientIp + ":auth";
         }
         return clientIp + ":" + method + ":" + path;
     }
