@@ -55,10 +55,13 @@ API em `http://localhost:8080`.
    - `DB_USERNAME`
    - `DB_PASSWORD`
 
-2. Plugin **MySQL** do Railway:
-   - `MYSQL_URL`
+2. Plugin **MySQL** do Railway (recomendado — vincule o serviço MySQL à API):
+   - `MYSQL_URL` (formato `mysql://...`; a API converte para JDBC automaticamente)
    - `MYSQLUSER`
    - `MYSQLPASSWORD`
+
+   **Importante:** não use `MYSQL_URL` direto em `DB_URL`. Se preferir JDBC manual:
+   `jdbc:mysql://host:porta/railway?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC`
 
 ## Deploy no Railway
 

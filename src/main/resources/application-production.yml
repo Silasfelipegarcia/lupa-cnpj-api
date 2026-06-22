@@ -1,6 +1,7 @@
 spring:
   datasource:
-    url: ${DB_URL:${MYSQL_URL:}}
+    # DB_URL deve ser JDBC (jdbc:mysql://...). MYSQL_URL do Railway é tratada em DatabaseConfig.
+    url: ${DB_URL:}
     username: ${DB_USERNAME:${MYSQLUSER:}}
     password: ${DB_PASSWORD:${MYSQLPASSWORD:}}
     driver-class-name: com.mysql.cj.jdbc.Driver
