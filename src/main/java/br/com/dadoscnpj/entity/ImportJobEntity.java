@@ -47,6 +47,12 @@ public class ImportJobEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "nome_lista")
+    private String nomeLista;
+
+    @Column(name = "lista_salva", nullable = false)
+    private boolean listaSalva = false;
+
     public UUID getId() {
         return id;
     }
@@ -157,5 +163,21 @@ public class ImportJobEntity {
 
     public void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public String getNomeLista() {
+        return nomeLista;
+    }
+
+    public void setNomeLista(String nomeLista) {
+        this.nomeLista = nomeLista;
+    }
+
+    public boolean isListaSalva() {
+        return listaSalva;
+    }
+
+    public void setListaSalva(boolean listaSalva) {
+        this.listaSalva = listaSalva;
     }
 }

@@ -62,6 +62,10 @@ public class ImportJobMapper {
         return entity;
     }
 
+    public List<ImportRow> deserializarLinhasPublico(String json) {
+        return deserializarLinhas(json);
+    }
+
     public ImportResultEntity toResultEntity(UUID jobId, int linhaNumero, CnpjResult result) {
         ImportResultEntity entity = new ImportResultEntity();
         entity.setJobId(jobId);

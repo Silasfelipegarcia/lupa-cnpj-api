@@ -2,15 +2,20 @@ package br.com.dadoscnpj.dto;
 
 import br.com.dadoscnpj.domain.SubscriptionPlan;
 
+import java.util.List;
+
 public class PlanCatalogItemResponse {
 
     private SubscriptionPlan plan;
     private String nome;
+    private String descricao;
     private int maxRowsPerFile;
     private String batchSearchesPerDay;
     private String directCnpjPerDay;
     private int priceCents;
     private String priceLabel;
+    private List<String> beneficios;
+    private boolean contatoComercial;
 
     public SubscriptionPlan getPlan() {
         return plan;
@@ -26,6 +31,14 @@ public class PlanCatalogItemResponse {
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
     }
 
     public int getMaxRowsPerFile() {
@@ -66,5 +79,21 @@ public class PlanCatalogItemResponse {
 
     public void setPriceLabel(String priceLabel) {
         this.priceLabel = priceLabel;
+    }
+
+    public List<String> getBeneficios() {
+        return beneficios;
+    }
+
+    public void setBeneficios(List<String> beneficios) {
+        this.beneficios = beneficios;
+    }
+
+    public boolean isContatoComercial() {
+        return contatoComercial;
+    }
+
+    public void setContatoComercial(boolean contatoComercial) {
+        this.contatoComercial = contatoComercial;
     }
 }

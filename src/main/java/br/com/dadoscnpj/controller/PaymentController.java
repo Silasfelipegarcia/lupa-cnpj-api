@@ -2,6 +2,7 @@ package br.com.dadoscnpj.controller;
 
 import br.com.dadoscnpj.dto.CheckoutRequest;
 import br.com.dadoscnpj.dto.CheckoutResponse;
+import br.com.dadoscnpj.dto.PaymentHistoryItemResponse;
 import br.com.dadoscnpj.payment.MercadoPagoPaymentService;
 import br.com.dadoscnpj.security.SecurityUtils;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/payments")
@@ -27,6 +30,11 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.criarCheckout(
                 SecurityUtils.currentUserId(),
                 request.getPlan()));
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<List<PaymentHistoryItemResponse>> historico() {
+        return ResponseEntity.ok(paymentService.listarHistorico(SecurityUtils.currentUserId()));
     }
 
     @PostMapping("/mercadopago/webhook")

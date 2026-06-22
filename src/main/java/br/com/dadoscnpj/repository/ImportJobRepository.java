@@ -14,6 +14,8 @@ public interface ImportJobRepository extends JpaRepository<ImportJobEntity, UUID
 
     List<ImportJobEntity> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
+    List<ImportJobEntity> findByUserIdAndListaSalvaTrueOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
     Optional<ImportJobEntity> findByIdAndUserId(UUID id, UUID userId);
 
     @Query("SELECT COUNT(j) FROM ImportJobEntity j WHERE j.userId = :userId AND j.status IN ('NA_FILA', 'PROCESSANDO')")

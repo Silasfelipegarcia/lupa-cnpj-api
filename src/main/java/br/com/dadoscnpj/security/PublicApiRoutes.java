@@ -40,6 +40,9 @@ public final class PublicApiRoutes {
         if (normalized.startsWith("/payments/mercadopago/webhook")) {
             return true;
         }
+        if (normalized.startsWith("/analytics/event")) {
+            return true;
+        }
         return false;
     }
 }

@@ -8,6 +8,12 @@ public class PlanUsageResponse {
     private int batchSearchesToday;
     private int directCnpjToday;
     private boolean master;
+    private boolean pesquisaRazaoSocial;
+    private boolean exportExcel;
+    private boolean filtroSomenteAtivos;
+    private boolean filtrosAvancados;
+    private boolean dedupeHabilitado;
+    private boolean trialDisponivel;
 
     public int getMaxRowsPerFile() {
         return maxRowsPerFile;
@@ -55,5 +61,53 @@ public class PlanUsageResponse {
 
     public void setMaster(boolean master) {
         this.master = master;
+    }
+
+    public boolean isPesquisaRazaoSocial() {
+        return pesquisaRazaoSocial;
+    }
+
+    public void setPesquisaRazaoSocial(boolean pesquisaRazaoSocial) {
+        this.pesquisaRazaoSocial = pesquisaRazaoSocial;
+    }
+
+    public boolean isExportExcel() {
+        return exportExcel;
+    }
+
+    public void setExportExcel(boolean exportExcel) {
+        this.exportExcel = exportExcel;
+    }
+
+    public boolean isFiltroSomenteAtivos() {
+        return filtroSomenteAtivos;
+    }
+
+    public void setFiltroSomenteAtivos(boolean filtroSomenteAtivos) {
+        this.filtroSomenteAtivos = filtroSomenteAtivos;
+    }
+
+    public boolean isFiltrosAvancados() {
+        return filtrosAvancados;
+    }
+
+    public void setFiltrosAvancados(boolean filtrosAvancados) {
+        this.filtrosAvancados = filtrosAvancados;
+    }
+
+    public boolean isDedupeHabilitado() {
+        return dedupeHabilitado;
+    }
+
+    public void setDedupeHabilitado(boolean dedupeHabilitado) {
+        this.dedupeHabilitado = dedupeHabilitado;
+    }
+
+    public boolean isTrialDisponivel() {
+        return trialDisponivel;
+    }
+
+    public void setTrialDisponivel(boolean trialDisponivel) {
+        this.trialDisponivel = trialDisponivel;
     }
 }

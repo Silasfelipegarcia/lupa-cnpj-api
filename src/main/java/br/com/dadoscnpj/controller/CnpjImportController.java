@@ -7,10 +7,18 @@ import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportJobSummaryResponse;
 import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.dto.ListaSalvaResponse;
+import br.com.dadoscnpj.dto.SalvarListaRequest;
+import br.com.dadoscnpj.entity.UserEntity;
+import br.com.dadoscnpj.exception.ForbiddenException;
+import br.com.dadoscnpj.plan.PlanLimits;
+import br.com.dadoscnpj.plan.PlanLimitsService;
+import br.com.dadoscnpj.repository.UserRepository;
 import br.com.dadoscnpj.security.SecurityUtils;
 import br.com.dadoscnpj.service.CnpjDirectConsultaService;
 import br.com.dadoscnpj.service.CnpjImportService;
 import br.com.dadoscnpj.service.ImportJobQueueService;
+import br.com.dadoscnpj.service.TrialService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
@@ -23,6 +31,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,22 +54,45 @@ public class CnpjImportController {
     private final CnpjExcelTemplateWriter templateWriter;
     private final CnpjApiProperties cnpjApiProperties;
     private final CnpjDirectConsultaService directConsultaService;
+    private final UserRepository userRepository;
+    private final PlanLimitsService planLimitsService;
+    private final TrialService trialService;
 
     public CnpjImportController(CnpjImportService cnpjImportService,
                                 ImportJobQueueService jobQueueService,
                                 CnpjExcelTemplateWriter templateWriter,
                                 CnpjApiProperties cnpjApiProperties,
-                                CnpjDirectConsultaService directConsultaService) {
+                                CnpjDirectConsultaService directConsultaService,
+                                UserRepository userRepository,
+                                PlanLimitsService planLimitsService,
+                                TrialService trialService) {
         this.cnpjImportService = cnpjImportService;
         this.jobQueueService = jobQueueService;
         this.templateWriter = templateWriter;
         this.cnpjApiProperties = cnpjApiProperties;
         this.directConsultaService = directConsultaService;
+        this.userRepository = userRepository;
+        this.planLimitsService = planLimitsService;
+        this.trialService = trialService;
     }
 
     @GetMapping("/config")
     public ResponseEntity<CnpjConfigResponse> configuracao() {
-        return ResponseEntity.ok(new CnpjConfigResponse(cnpjApiProperties.isPesquisaRazaoSocialAtiva()));
+        UUID userId = SecurityUtils.currentUserId();
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        trialService.expirarTrialSeNecessario(user);
+
+        PlanLimits limits = planLimitsService.limitesDe(user);
+        CnpjConfigResponse response = new CnpjConfigResponse();
+        response.setPesquisaRazaoSocialHabilitada(
+                cnpjApiProperties.isPesquisaRazaoSocialAtiva() && limits.pesquisaRazaoSocial());
+        response.setExportExcel(limits.exportExcel());
+        response.setFiltroSomenteAtivos(limits.filtroSomenteAtivos());
+        response.setFiltrosAvancados(limits.filtrosAvancados());
+        response.setDedupeHabilitado(limits.dedupeHabilitado());
+        response.setTrialDisponivel(trialService.trialDisponivel(user));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/consulta")
@@ -127,6 +159,27 @@ public class CnpjImportController {
         return ResponseEntity.ok(jobQueueService.consultarHistoricoDetalhe(jobId, userId));
     }
 
+    @GetMapping("/import/listas-salvas")
+    public ResponseEntity<List<ListaSalvaResponse>> listasSalvas() {
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(jobQueueService.listarListasSalvas(userId));
+    }
+
+    @PostMapping("/import/{jobId}/salvar-lista")
+    public ResponseEntity<Void> salvarLista(@PathVariable String jobId,
+                                            @RequestBody SalvarListaRequest request) {
+        UUID userId = SecurityUtils.currentUserId();
+        jobQueueService.salvarLista(jobId, userId, request.getNomeLista());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/import/{jobId}/reprocessar")
+    public ResponseEntity<ImportJobResponse> reprocessar(@PathVariable String jobId) {
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(jobQueueService.reprocessar(jobId, userId));
+    }
+
     @GetMapping("/import/{jobId}/status")
     public ResponseEntity<ImportJobResponse> status(@PathVariable String jobId) {
         UUID userId = SecurityUtils.currentUserId();
@@ -140,17 +193,57 @@ public class CnpjImportController {
     }
 
     @GetMapping("/import/{jobId}/download")
-    public ResponseEntity<Resource> download(@PathVariable String jobId) {
+    public ResponseEntity<Resource> download(@PathVariable String jobId,
+                                             @RequestParam(value = "format", defaultValue = "csv") String format,
+                                             @RequestParam(value = "somenteAtivos", defaultValue = "false") boolean somenteAtivos,
+                                             @RequestParam(value = "uf", required = false) String uf,
+                                             @RequestParam(value = "cnae", required = false) String cnae,
+                                             @RequestParam(value = "comTelefone", defaultValue = "false") boolean comTelefone,
+                                             @RequestParam(value = "comEmail", defaultValue = "false") boolean comEmail)
+            throws Exception {
         UUID userId = SecurityUtils.currentUserId();
-        byte[] csvResultado = jobQueueService.baixarResultado(jobId, userId);
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        PlanLimits limits = planLimitsService.limitesDe(user);
+
+        ImportJobResponse job = jobQueueService.consultarHistoricoDetalhe(jobId, userId);
+        List<CnpjResult> resultados = job.getResultados() != null ? job.getResultados() : List.of();
+
+        if (somenteAtivos && !limits.filtroSomenteAtivos()) {
+            throw new ForbiddenException("Filtro de empresas ativas disponível no plano Prospecção ou superior.");
+        }
+        if ((comTelefone || comEmail || (uf != null && !uf.isBlank()) || (cnae != null && !cnae.isBlank()))
+                && !limits.filtrosAvancados()) {
+            throw new ForbiddenException("Filtros avançados disponíveis no plano Growth.");
+        }
+
+        List<CnpjResult> filtrados = cnpjImportService.filtrarResultados(
+                resultados, somenteAtivos, uf, cnae, comTelefone, comEmail);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String nomeArquivo = "cnpj_resultado_" + timestamp + ".csv";
+        boolean excel = "xlsx".equalsIgnoreCase(format) || "excel".equalsIgnoreCase(format);
+        if (excel && !limits.exportExcel()) {
+            throw new ForbiddenException("Exportação Excel disponível no plano Prospecção ou superior.");
+        }
+
+        byte[] conteudo;
+        String nomeArquivo;
+        MediaType mediaType;
+        if (excel) {
+            conteudo = cnpjImportService.gerarExcel(filtrados);
+            nomeArquivo = "lupa_prospeccao_" + timestamp + ".xlsx";
+            mediaType = MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        } else {
+            conteudo = cnpjImportService.gerarCsv(filtrados);
+            nomeArquivo = "lupa_prospeccao_" + timestamp + ".csv";
+            mediaType = MediaType.parseMediaType("text/csv; charset=UTF-8");
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nomeArquivo + "\"")
-                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(new ByteArrayResource(csvResultado));
+                .contentType(mediaType)
+                .body(new ByteArrayResource(conteudo));
     }
 
     private boolean extensaoPermitida(String nomeArquivo) {

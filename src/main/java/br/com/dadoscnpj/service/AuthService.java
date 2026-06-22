@@ -26,17 +26,20 @@ public class AuthService {
     private final JwtService jwtService;
     private final PlanService planService;
     private final PlanLimitsService planLimitsService;
+    private final TrialService trialService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        PlanService planService,
-                       PlanLimitsService planLimitsService) {
+                       PlanLimitsService planLimitsService,
+                       TrialService trialService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.planService = planService;
         this.planLimitsService = planLimitsService;
+        this.trialService = trialService;
     }
 
     public AuthResponse registrar(RegisterRequest request) {
@@ -81,12 +84,14 @@ public class AuthService {
             throw new IllegalArgumentException("E-mail ou senha inválidos");
         }
 
+        trialService.expirarTrialSeNecessario(user);
         return montarAuthResponse(user);
     }
 
     public UserResponse obterUsuario(UUID userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        trialService.expirarTrialSeNecessario(user);
         return toUserResponse(user);
     }
 

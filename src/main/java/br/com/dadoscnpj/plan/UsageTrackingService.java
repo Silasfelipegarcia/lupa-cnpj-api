@@ -1,6 +1,5 @@
 package br.com.dadoscnpj.plan;
 
-import br.com.dadoscnpj.domain.SubscriptionPlan;
 import br.com.dadoscnpj.entity.UserDailyUsageEntity;
 import br.com.dadoscnpj.entity.UserEntity;
 import br.com.dadoscnpj.repository.UserDailyUsageRepository;
@@ -46,31 +45,27 @@ public class UsageTrackingService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         if (planLimitsService.isMaster(user)) {
-            incrementarBatch(userId, linhasNoArquivo, user.getPlan());
+            incrementarBatch(userId, linhasNoArquivo);
             return;
         }
 
         PlanLimits limits = planLimitsService.limitesDe(user);
         UserDailyUsageEntity usage = obterOuCriar(userId, hoje());
 
-        if (user.getPlan() == SubscriptionPlan.FREE) {
+        if (!limits.isUnlimitedBatch()) {
             int limiteDiario = limits.maxBatchSearchesPerDay();
             int usadas = usage.getBatchSearches();
             if (usadas + linhasNoArquivo > limiteDiario) {
                 int restantes = Math.max(0, limiteDiario - usadas);
                 throw new IllegalStateException(String.format(
-                        "Seu plano Free permite até %d empresa(s) por planilha por dia. "
+                        "Seu plano %s permite até %d empresa(s) em planilha por dia. "
                                 + "Você já consultou %d hoje — restam %d.",
+                        planLimitsService.nomeExibicao(user.getPlan()),
                         limiteDiario, usadas, restantes));
             }
-        } else if (!limits.isUnlimitedBatch() && usage.getBatchSearches() >= limits.maxBatchSearchesPerDay()) {
-            throw new IllegalStateException(String.format(
-                    "Limite diário de %d consulta(s) em planilha do plano %s atingido. Faça upgrade ou tente amanhã.",
-                    limits.maxBatchSearchesPerDay(),
-                    planLimitsService.nomeExibicao(user.getPlan())));
         }
 
-        incrementarBatch(userId, linhasNoArquivo, user.getPlan());
+        incrementarBatch(userId, linhasNoArquivo);
     }
 
     @Transactional
@@ -91,7 +86,7 @@ public class UsageTrackingService {
         UserDailyUsageEntity usage = obterOuCriar(userId, hoje());
         if (usage.getDirectCnpjLookups() >= limits.maxDirectCnpjPerDay()) {
             throw new IllegalStateException(String.format(
-                    "Limite diário de %d consulta(s) avulsas de CNPJ do plano %s atingido. Faça upgrade para consultas ilimitadas.",
+                    "Limite diário de %d CNPJ(s) únicos do plano %s atingido. Faça upgrade para continuar.",
                     limits.maxDirectCnpjPerDay(),
                     planLimitsService.nomeExibicao(user.getPlan())));
         }
@@ -111,23 +106,23 @@ public class UsageTrackingService {
                     limits.maxRowsPerFile()));
         }
 
-        if (user.getPlan() == SubscriptionPlan.FREE) {
+        if (!limits.isUnlimitedBatch()) {
             UserDailyUsageEntity usage = obterOuCriar(user.getId(), hoje());
             int limiteDiario = limits.maxBatchSearchesPerDay();
             int restantes = limiteDiario - usage.getBatchSearches();
             if (linhas > restantes) {
                 throw new IllegalArgumentException(String.format(
-                        "Seu plano Free permite até %d empresa(s) em planilha por dia. "
+                        "Seu plano %s permite até %d empresa(s) em planilha por dia. "
                                 + "Você já consultou %d hoje — restam %d para importar.",
+                        planLimitsService.nomeExibicao(user.getPlan()),
                         limiteDiario, usage.getBatchSearches(), Math.max(0, restantes)));
             }
         }
     }
 
-    private void incrementarBatch(UUID userId, int linhasNoArquivo, SubscriptionPlan plan) {
+    private void incrementarBatch(UUID userId, int linhasNoArquivo) {
         UserDailyUsageEntity usage = obterOuCriar(userId, hoje());
-        int incremento = plan == SubscriptionPlan.FREE ? linhasNoArquivo : 1;
-        usage.setBatchSearches(usage.getBatchSearches() + incremento);
+        usage.setBatchSearches(usage.getBatchSearches() + linhasNoArquivo);
         usageRepository.save(usage);
     }
 

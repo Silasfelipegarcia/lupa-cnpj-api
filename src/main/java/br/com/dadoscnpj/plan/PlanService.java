@@ -6,6 +6,7 @@ import br.com.dadoscnpj.dto.PlanUsageResponse;
 import br.com.dadoscnpj.entity.UserEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -34,15 +35,22 @@ public class PlanService {
         response.setBatchSearchesToday(snapshot.batchSearchesToday());
         response.setDirectCnpjToday(snapshot.directCnpjToday());
         response.setMaster(snapshot.master());
+        response.setPesquisaRazaoSocial(limits.pesquisaRazaoSocial());
+        response.setExportExcel(limits.exportExcel());
+        response.setFiltroSomenteAtivos(limits.filtroSomenteAtivos());
+        response.setFiltrosAvancados(limits.filtrosAvancados());
+        response.setDedupeHabilitado(limits.dedupeHabilitado());
+        response.setTrialDisponivel(!user.isTrialUtilizado() && user.getTrialAte() == null);
         return response;
     }
 
     public List<PlanCatalogItemResponse> catalogo() {
-        return List.of(
-                item(SubscriptionPlan.FREE, 0),
-                item(SubscriptionPlan.PREMIUM, mercadoPagoProperties.getPremiumPriceCents()),
-                item(SubscriptionPlan.PRO_PLUS, mercadoPagoProperties.getProPlusPriceCents())
-        );
+        List<PlanCatalogItemResponse> itens = new ArrayList<>();
+        itens.add(item(SubscriptionPlan.FREE, 0));
+        itens.add(item(SubscriptionPlan.PREMIUM, mercadoPagoProperties.getPremiumPriceCents()));
+        itens.add(item(SubscriptionPlan.PRO_PLUS, mercadoPagoProperties.getProPlusPriceCents()));
+        itens.add(itemBusiness());
+        return itens;
     }
 
     private PlanCatalogItemResponse item(SubscriptionPlan plan, int priceCents) {
@@ -50,12 +58,64 @@ public class PlanService {
         PlanCatalogItemResponse item = new PlanCatalogItemResponse();
         item.setPlan(plan);
         item.setNome(planLimitsService.nomeExibicao(plan));
+        item.setDescricao(planLimitsService.descricaoCurta(plan));
         item.setMaxRowsPerFile(limits.maxRowsPerFile());
         item.setBatchSearchesPerDay(formatarLimiteBatch(plan, limits));
         item.setDirectCnpjPerDay(formatarLimiteDirect(plan, limits));
         item.setPriceCents(priceCents);
         item.setPriceLabel(priceCents == 0 ? "Grátis" : String.format("R$ %.2f/mês", priceCents / 100.0));
+        item.setBeneficios(beneficiosDe(plan, limits));
+        item.setContatoComercial(false);
         return item;
+    }
+
+    private PlanCatalogItemResponse itemBusiness() {
+        PlanCatalogItemResponse item = new PlanCatalogItemResponse();
+        item.setNome("Business");
+        item.setDescricao("Alto volume, API e integrações");
+        item.setMaxRowsPerFile(0);
+        item.setBatchSearchesPerDay("Sob medida");
+        item.setDirectCnpjPerDay("Sob medida");
+        item.setPriceCents(0);
+        item.setPriceLabel("Fale conosco");
+        item.setBeneficios(List.of(
+                "API dedicada e webhooks",
+                "Integrações com CRM",
+                "Volume e SLA customizados",
+                "Faturamento para empresas"
+        ));
+        item.setContatoComercial(true);
+        return item;
+    }
+
+    private List<String> beneficiosDe(SubscriptionPlan plan, PlanLimits limits) {
+        List<String> beneficios = new ArrayList<>();
+        beneficios.add("Até " + limits.maxRowsPerFile() + " empresas por arquivo");
+        beneficios.add("Planilha em massa: " + formatarLimiteBatch(plan, limits));
+        beneficios.add("CNPJ único: " + formatarLimiteDirect(plan, limits) + " por dia");
+        if (limits.pesquisaRazaoSocial()) {
+            beneficios.add("Busca por razão social");
+        }
+        if (limits.exportExcel()) {
+            beneficios.add("Exportação Excel (.xlsx)");
+        }
+        if (limits.filtroSomenteAtivos()) {
+            beneficios.add("Filtro de empresas ativas");
+        }
+        if (limits.filtrosAvancados()) {
+            beneficios.add("Filtros por UF, CNAE e contato");
+        }
+        if (limits.dedupeHabilitado()) {
+            beneficios.add("Remoção de CNPJs duplicados");
+        }
+        if (plan == SubscriptionPlan.FREE) {
+            beneficios.add("Histórico de 7 dias");
+        } else if (plan == SubscriptionPlan.PREMIUM) {
+            beneficios.add("Histórico de 90 dias");
+        } else if (plan == SubscriptionPlan.PRO_PLUS) {
+            beneficios.add("Histórico ilimitado");
+        }
+        return beneficios;
     }
 
     private UserEntity planoTemporario(SubscriptionPlan plan) {
@@ -65,27 +125,17 @@ public class PlanService {
         return user;
     }
 
-    private String formatarLimite(Integer valor) {
-        return valor == null ? "Ilimitado" : String.valueOf(valor);
-    }
-
     private String formatarLimiteBatch(SubscriptionPlan plan, PlanLimits limits) {
         if (limits.isUnlimitedBatch()) {
             return "Ilimitado";
         }
-        if (plan == SubscriptionPlan.FREE) {
-            return limits.maxBatchSearchesPerDay() + " empresas/dia";
-        }
-        return limits.maxBatchSearchesPerDay() + " buscas/dia";
+        return limits.maxBatchSearchesPerDay() + " empresas/dia";
     }
 
     private String formatarLimiteDirect(SubscriptionPlan plan, PlanLimits limits) {
         if (limits.isUnlimitedDirect()) {
             return "Ilimitado";
         }
-        if (plan == SubscriptionPlan.FREE) {
-            return limits.maxDirectCnpjPerDay() + " únicos/dia";
-        }
-        return formatarLimite(limits.maxDirectCnpjPerDay());
+        return limits.maxDirectCnpjPerDay() + " únicos/dia";
     }
 }

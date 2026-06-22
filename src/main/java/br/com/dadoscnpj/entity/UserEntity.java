@@ -45,6 +45,12 @@ public class UserEntity {
     @Column(nullable = false, length = 20)
     private SubscriptionPlan plan = SubscriptionPlan.FREE;
 
+    @Column(name = "trial_utilizado", nullable = false)
+    private boolean trialUtilizado = false;
+
+    @Column(name = "trial_ate")
+    private Instant trialAte;
+
     public UUID getId() {
         return id;
     }
@@ -115,5 +121,21 @@ public class UserEntity {
 
     public void setPlan(SubscriptionPlan plan) {
         this.plan = plan;
+    }
+
+    public boolean isTrialUtilizado() {
+        return trialUtilizado;
+    }
+
+    public void setTrialUtilizado(boolean trialUtilizado) {
+        this.trialUtilizado = trialUtilizado;
+    }
+
+    public Instant getTrialAte() {
+        return trialAte;
+    }
+
+    public void setTrialAte(Instant trialAte) {
+        this.trialAte = trialAte;
     }
 }

@@ -8,6 +8,7 @@ public enum AuditAction {
     CNPJ_CANCEL,
     CNPJ_DOWNLOAD,
     CNPJ_PREVIEW,
+    PRODUCT_EVENT,
     ACCESS_DENIED,
     API_REQUEST
 }

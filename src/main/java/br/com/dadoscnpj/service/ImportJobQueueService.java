@@ -8,8 +8,11 @@ import br.com.dadoscnpj.dto.ImportRow;
 import br.com.dadoscnpj.entity.ImportJobEntity;
 import br.com.dadoscnpj.entity.UserEntity;
 import br.com.dadoscnpj.exception.ForbiddenException;
+import br.com.dadoscnpj.util.ImportLineDedupe;
 import br.com.dadoscnpj.model.ImportJob;
 import br.com.dadoscnpj.plan.UsageTrackingService;
+import br.com.dadoscnpj.config.CnpjApiProperties;
+import br.com.dadoscnpj.plan.PlanLimitsService;
 import br.com.dadoscnpj.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +37,9 @@ public class ImportJobQueueService {
     private final SecurityProperties securityProperties;
     private final UserRepository userRepository;
     private final UsageTrackingService usageTrackingService;
+    private final PlanLimitsService planLimitsService;
+    private final CnpjApiProperties cnpjApiProperties;
+    private final ImportJobMapper importJobMapper;
     private final ConcurrentLinkedQueue<String> fila = new ConcurrentLinkedQueue<>();
 
     public ImportJobQueueService(ImportJobStore jobStore,
@@ -41,19 +47,26 @@ public class ImportJobQueueService {
                                  ExecutorService importJobExecutor,
                                  SecurityProperties securityProperties,
                                  UserRepository userRepository,
-                                 UsageTrackingService usageTrackingService) {
+                                 UsageTrackingService usageTrackingService,
+                                 PlanLimitsService planLimitsService,
+                                 CnpjApiProperties cnpjApiProperties,
+                                 ImportJobMapper importJobMapper) {
         this.jobStore = jobStore;
         this.cnpjImportService = cnpjImportService;
         this.importJobExecutor = importJobExecutor;
         this.securityProperties = securityProperties;
         this.userRepository = userRepository;
         this.usageTrackingService = usageTrackingService;
+        this.planLimitsService = planLimitsService;
+        this.cnpjApiProperties = cnpjApiProperties;
+        this.importJobMapper = importJobMapper;
     }
 
     public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
-        validarLimites(nomeArquivo, linhas, userId);
+        List<ImportRow> linhasPreparadas = prepararLinhas(linhas, userId);
+        validarLimites(nomeArquivo, linhasPreparadas, userId);
 
-        ImportJob job = new ImportJob(nomeArquivo, linhas, userId);
+        ImportJob job = new ImportJob(nomeArquivo, linhasPreparadas, userId);
         jobStore.salvar(job);
         fila.offer(job.getId());
 
@@ -126,6 +139,35 @@ public class ImportJobQueueService {
                 .orElse(null);
     }
 
+    public List<br.com.dadoscnpj.dto.ListaSalvaResponse> listarListasSalvas(UUID userId) {
+        return jobStore.listarSalvas(userId, 50).stream()
+                .map(entity -> {
+                    br.com.dadoscnpj.dto.ListaSalvaResponse response = new br.com.dadoscnpj.dto.ListaSalvaResponse();
+                    response.setJobId(entity.getId());
+                    response.setNomeLista(entity.getNomeLista());
+                    response.setArquivo(entity.getArquivo());
+                    response.setTotal(entity.getTotal());
+                    response.setCreatedAt(entity.getCreatedAt());
+                    return response;
+                })
+                .toList();
+    }
+
+    public void salvarLista(String jobId, UUID userId, String nomeLista) {
+        if (nomeLista == null || nomeLista.isBlank()) {
+            throw new IllegalArgumentException("Informe um nome para a lista.");
+        }
+        jobStore.salvarComoLista(jobId, userId, nomeLista.trim());
+    }
+
+    public ImportJobResponse reprocessar(String jobId, UUID userId) {
+        ImportJobEntity entity = jobStore.buscarEntidadeDoUsuario(jobId, userId)
+                .orElseThrow(() -> new ForbiddenException("Você não tem permissão para acessar esta consulta"));
+        List<ImportRow> linhas = importJobMapper.deserializarLinhasPublico(entity.getLinhasJson());
+        String nome = "reprocesso-" + entity.getArquivo();
+        return enfileirar(nome, linhas, userId);
+    }
+
     public int recuperarJobsPendentes() {
         int recuperados = 0;
         for (ImportJobEntity entity : jobStore.listarAtivos()) {
@@ -161,6 +203,15 @@ public class ImportJobQueueService {
     private ImportJob buscarJobDoUsuario(String jobId, UUID userId) {
         return jobStore.buscarDoUsuario(jobId, userId)
                 .orElseThrow(() -> new ForbiddenException("Você não tem permissão para acessar esta consulta"));
+    }
+
+    private List<ImportRow> prepararLinhas(List<ImportRow> linhas, UUID userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        if (planLimitsService.limitesDe(user).dedupeHabilitado()) {
+            return ImportLineDedupe.deduplicar(linhas);
+        }
+        return linhas;
     }
 
     private void validarLimites(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
@@ -226,6 +277,8 @@ public class ImportJobQueueService {
 
             CnpjImportService.CachesConsulta caches = cnpjImportService.construirCaches(job.getResultados());
 
+            boolean pesquisaRazaoSocial = pesquisaRazaoSocialPermitida(job.getUserId());
+
             cnpjImportService.processarLinhas(
                     linhasPendentes,
                     progresso -> {
@@ -243,7 +296,8 @@ public class ImportJobQueueService {
                     () -> !job.isCancelamentoSolicitado(),
                     job.getProcessados() + 1,
                     caches.porCnpj(),
-                    caches.porRazaoSocial());
+                    caches.porRazaoSocial(),
+                    pesquisaRazaoSocial);
 
             if (job.isCancelamentoSolicitado()) {
                 if (!job.getResultados().isEmpty()) {
@@ -306,6 +360,15 @@ public class ImportJobQueueService {
             posicao++;
         }
         return 0;
+    }
+
+    private boolean pesquisaRazaoSocialPermitida(UUID userId) {
+        UserEntity user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return false;
+        }
+        return cnpjApiProperties.isPesquisaRazaoSocialAtiva()
+                && planLimitsService.limitesDe(user).pesquisaRazaoSocial();
     }
 
     private ImportJobResponse toResponse(ImportJob job) {

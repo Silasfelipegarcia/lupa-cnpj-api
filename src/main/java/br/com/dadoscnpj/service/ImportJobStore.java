@@ -4,6 +4,7 @@ import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportJobStatus;
 import br.com.dadoscnpj.entity.ImportJobEntity;
 import br.com.dadoscnpj.entity.ImportResultEntity;
+import br.com.dadoscnpj.exception.ForbiddenException;
 import br.com.dadoscnpj.model.ImportJob;
 import br.com.dadoscnpj.repository.ImportJobRepository;
 import br.com.dadoscnpj.repository.ImportResultRepository;
@@ -80,6 +81,26 @@ public class ImportJobStore {
     @Transactional(readOnly = true)
     public List<ImportJobEntity> listarAtivos() {
         return jobRepository.findAtivosOrderByCreatedAtAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ImportJobEntity> buscarEntidadeDoUsuario(String jobId, UUID userId) {
+        return jobRepository.findByIdAndUserId(UUID.fromString(jobId), userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ImportJobEntity> listarSalvas(UUID userId, int limite) {
+        return jobRepository.findByUserIdAndListaSalvaTrueOrderByCreatedAtDesc(
+                userId, PageRequest.of(0, limite));
+    }
+
+    @Transactional
+    public void salvarComoLista(String jobId, UUID userId, String nomeLista) {
+        ImportJobEntity entity = jobRepository.findByIdAndUserId(UUID.fromString(jobId), userId)
+                .orElseThrow(() -> new ForbiddenException("Você não tem permissão para acessar esta consulta"));
+        entity.setListaSalva(true);
+        entity.setNomeLista(nomeLista);
+        jobRepository.save(entity);
     }
 
     @Transactional(readOnly = true)

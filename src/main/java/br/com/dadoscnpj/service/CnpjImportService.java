@@ -5,6 +5,7 @@ import br.com.dadoscnpj.client.CnpjClient;
 import br.com.dadoscnpj.client.CnpjPesquisaClient;
 import br.com.dadoscnpj.csv.CnpjPlanilhaReader;
 import br.com.dadoscnpj.csv.CnpjCsvWriter;
+import br.com.dadoscnpj.csv.CnpjExcelResultWriter;
 import br.com.dadoscnpj.dto.CnpjResponse;
 import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportRow;
@@ -31,17 +32,20 @@ public class CnpjImportService {
 
     private final CnpjPlanilhaReader planilhaReader;
     private final CnpjCsvWriter csvWriter;
+    private final CnpjExcelResultWriter excelWriter;
     private final CnpjConsultaPort cnpjClient;
     private final CnpjResolucaoPort resolucaoService;
     private final CnpjApiProperties cnpjApiProperties;
 
     public CnpjImportService(CnpjPlanilhaReader planilhaReader,
                              CnpjCsvWriter csvWriter,
+                             CnpjExcelResultWriter excelWriter,
                              CnpjConsultaPort cnpjClient,
                              CnpjResolucaoPort resolucaoService,
                              CnpjApiProperties cnpjApiProperties) {
         this.planilhaReader = planilhaReader;
         this.csvWriter = csvWriter;
+        this.excelWriter = excelWriter;
         this.cnpjClient = cnpjClient;
         this.resolucaoService = resolucaoService;
         this.cnpjApiProperties = cnpjApiProperties;
@@ -61,7 +65,7 @@ public class CnpjImportService {
                                               BooleanSupplier continuarProcessamento)
             throws InterruptedException, IOException {
         return processarLinhas(linhas, onProgress, continuarProcessamento, 1,
-                new HashMap<>(), new HashMap<>());
+                new HashMap<>(), new HashMap<>(), true);
     }
 
     public List<CnpjResult> processarLinhas(List<ImportRow> linhas,
@@ -69,7 +73,8 @@ public class CnpjImportService {
                                               BooleanSupplier continuarProcessamento,
                                               int numeroLinhaInicial,
                                               Map<String, CnpjResult> cachePorCnpj,
-                                              Map<String, CnpjResult> cachePorRazaoSocial)
+                                              Map<String, CnpjResult> cachePorRazaoSocial,
+                                              boolean pesquisaRazaoSocialPermitida)
             throws InterruptedException, IOException {
         List<CnpjResult> resultados = new ArrayList<>();
         int total = linhas.size();
@@ -84,7 +89,8 @@ public class CnpjImportService {
             numeroLinha++;
             log.info("Processando linha {} ({}/{})", numeroLinha, resultados.size() + 1, total);
 
-            CnpjResult resultado = processarLinha(linha, numeroLinha, cachePorCnpj, cachePorRazaoSocial);
+            CnpjResult resultado = processarLinha(linha, numeroLinha, cachePorCnpj, cachePorRazaoSocial,
+                    pesquisaRazaoSocialPermitida);
             resultados.add(resultado);
             onProgress.accept(new ProgressoCnpj(
                     "SUCESSO".equals(resultado.getStatusConsulta()) ? "SUCESSO" : "ERRO",
@@ -118,20 +124,23 @@ public class CnpjImportService {
     }
 
     CnpjResult processarLinha(ImportRow linha, int numeroLinha) {
-        return processarLinha(linha, numeroLinha, new HashMap<>(), new HashMap<>());
+        return processarLinha(linha, numeroLinha, new HashMap<>(), new HashMap<>(), true);
     }
 
     CnpjResult processarLinha(ImportRow linha,
                               int numeroLinha,
                               Map<String, CnpjResult> cachePorCnpj,
-                              Map<String, CnpjResult> cachePorRazaoSocial) {
+                              Map<String, CnpjResult> cachePorRazaoSocial,
+                              boolean pesquisaRazaoSocialPermitida) {
+        boolean pesquisaAtiva = pesquisaRazaoSocialPermitida
+                && cnpjApiProperties.isPesquisaRazaoSocialAtiva();
         try {
             normalizarLinha(linha);
 
             if (!linha.temCnpj()) {
-                if (!cnpjApiProperties.isPesquisaRazaoSocialAtiva()) {
+                if (!pesquisaAtiva) {
                     CnpjResult erro = CnpjResult.erro(linha,
-                            "Linha ignorada: informe o CNPJ (busca por razão social desligada).");
+                            "Linha ignorada: informe o CNPJ (busca por razão social disponível no plano Prospecção+).");
                     return registrarCache(linha, erro, null, cachePorCnpj, cachePorRazaoSocial);
                 }
                 if (!linha.temRazaoSocial()) {
@@ -183,7 +192,7 @@ public class CnpjImportService {
                 }
             }
 
-            if (cnpjApiProperties.isPesquisaRazaoSocialAtiva() && linha.temRazaoSocial()) {
+            if (pesquisaAtiva && linha.temRazaoSocial()) {
                 String chaveRazao = chaveRazaoSocial(linha.getRazaoSocial());
                 CnpjResult razaoEmCache = cachePorRazaoSocial.get(chaveRazao);
                 if (isSucesso(razaoEmCache)) {
@@ -234,6 +243,40 @@ public class CnpjImportService {
 
     public byte[] gerarCsv(List<CnpjResult> resultados) throws IOException {
         return csvWriter.escrever(resultados);
+    }
+
+    public byte[] gerarExcel(List<CnpjResult> resultados) throws IOException {
+        return excelWriter.escrever(resultados);
+    }
+
+    public List<CnpjResult> filtrarResultados(List<CnpjResult> resultados,
+                                              boolean somenteAtivos,
+                                              String uf,
+                                              String cnae,
+                                              boolean comTelefone,
+                                              boolean comEmail) {
+        return resultados.stream()
+                .filter(r -> !somenteAtivos || isSituacaoAtiva(r))
+                .filter(r -> uf == null || uf.isBlank()
+                        || (r.getUf() != null && r.getUf().equalsIgnoreCase(uf.trim())))
+                .filter(r -> cnae == null || cnae.isBlank()
+                        || (r.getCnaePrincipal() != null
+                        && r.getCnaePrincipal().toUpperCase().contains(cnae.trim().toUpperCase())))
+                .filter(r -> !comTelefone || temTelefone(r))
+                .filter(r -> !comEmail || (r.getEmail() != null && !r.getEmail().isBlank()))
+                .toList();
+    }
+
+    private boolean isSituacaoAtiva(CnpjResult resultado) {
+        if (resultado.getSituacaoCadastral() == null) {
+            return false;
+        }
+        return resultado.getSituacaoCadastral().toUpperCase().contains("ATIVA");
+    }
+
+    private boolean temTelefone(CnpjResult resultado) {
+        return (resultado.getTelefone1() != null && !resultado.getTelefone1().isBlank())
+                || (resultado.getTelefone2() != null && !resultado.getTelefone2().isBlank());
     }
 
     private CnpjResult buscarDuplicado(ImportRow linha,

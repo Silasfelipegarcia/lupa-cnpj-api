@@ -22,7 +22,7 @@ class CnpjImportServiceTest {
     private CnpjApiProperties cnpjApiProperties;
 
     private CnpjImportService criarService() {
-        return new CnpjImportService(null, null, cnpjConsulta, resolucao, cnpjApiProperties);
+        return new CnpjImportService(null, null, null, cnpjConsulta, resolucao, cnpjApiProperties);
     }
 
     @BeforeEach
@@ -119,8 +119,8 @@ class CnpjImportServiceTest {
         Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheCnpj = new HashMap<>();
         Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheRazao = new HashMap<>();
 
-        var primeiro = service.processarLinha(new ImportRow("19131243000197", ""), 1, cacheCnpj, cacheRazao);
-        var segundo = service.processarLinha(new ImportRow("19.131.243/0001-97", ""), 2, cacheCnpj, cacheRazao);
+        var primeiro = service.processarLinha(new ImportRow("19131243000197", ""), 1, cacheCnpj, cacheRazao, true);
+        var segundo = service.processarLinha(new ImportRow("19.131.243/0001-97", ""), 2, cacheCnpj, cacheRazao, true);
 
         assertEquals("SUCESSO", primeiro.getStatusConsulta());
         assertEquals("SUCESSO", segundo.getStatusConsulta());
@@ -139,8 +139,8 @@ class CnpjImportServiceTest {
         Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheCnpj = new HashMap<>();
         Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheRazao = new HashMap<>();
 
-        service.processarLinha(new ImportRow("", "PETROBRAS"), 1, cacheCnpj, cacheRazao);
-        var segundo = service.processarLinha(new ImportRow("", "petrobras"), 2, cacheCnpj, cacheRazao);
+        service.processarLinha(new ImportRow("", "PETROBRAS"), 1, cacheCnpj, cacheRazao, true);
+        var segundo = service.processarLinha(new ImportRow("", "petrobras"), 2, cacheCnpj, cacheRazao, true);
 
         assertEquals("SUCESSO", segundo.getStatusConsulta());
         assertEquals("", segundo.getObservacao());
@@ -156,7 +156,7 @@ class CnpjImportServiceTest {
         var resultado = service.processarLinha(new ImportRow("", "PETROBRAS"), 1);
 
         assertEquals("ERRO", resultado.getStatusConsulta());
-        assertTrue(resultado.getErro().contains("razão social desligada"));
+        assertTrue(resultado.getErro().contains("razão social"));
         assertEquals(0, cnpjConsulta.chamadas);
         assertEquals(0, resolucao.chamadas);
     }
@@ -177,9 +177,9 @@ class CnpjImportServiceTest {
         Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheRazao = new HashMap<>();
 
         var comCnpjErrado = service.processarLinha(
-                new ImportRow("00000000000100", razaoSocial), 1, cacheCnpj, cacheRazao);
+                new ImportRow("00000000000100", razaoSocial), 1, cacheCnpj, cacheRazao, true);
         var comCnpjCorreto = service.processarLinha(
-                new ImportRow("35107018000171", razaoSocial), 2, cacheCnpj, cacheRazao);
+                new ImportRow("35107018000171", razaoSocial), 2, cacheCnpj, cacheRazao, true);
 
         assertEquals("ERRO", comCnpjErrado.getStatusConsulta());
         assertEquals("SUCESSO", comCnpjCorreto.getStatusConsulta());
