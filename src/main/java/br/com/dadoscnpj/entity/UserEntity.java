@@ -51,6 +51,9 @@ public class UserEntity {
     @Column(name = "trial_ate")
     private Instant trialAte;
 
+    @Column(name = "mp_customer_id", length = 100)
+    private String mpCustomerId;
+
     public UUID getId() {
         return id;
     }
@@ -137,5 +140,13 @@ public class UserEntity {
 
     public void setTrialAte(Instant trialAte) {
         this.trialAte = trialAte;
+    }
+
+    public String getMpCustomerId() {
+        return mpCustomerId;
+    }
+
+    public void setMpCustomerId(String mpCustomerId) {
+        this.mpCustomerId = mpCustomerId;
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class MercadoPagoProperties {
 
     private String accessToken = "";
+    private String publicKey = "";
     private String frontendUrl = "https://lupa-cnpj.vercel.app";
     private String apiPublicUrl = "https://lupa-cnpj-api-production.up.railway.app";
     private String apiBaseUrl = "https://api.mercadopago.com";
@@ -18,6 +19,14 @@ public class MercadoPagoProperties {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    public String getPublicKey() {
+        return publicKey;
+    }
+
+    public void setPublicKey(String publicKey) {
+        this.publicKey = publicKey;
     }
 
     public String getFrontendUrl() {
@@ -62,5 +71,9 @@ public class MercadoPagoProperties {
 
     public boolean isConfigured() {
         return accessToken != null && !accessToken.isBlank();
+    }
+
+    public boolean isCheckoutReady() {
+        return isConfigured() && publicKey != null && !publicKey.isBlank();
     }
 }

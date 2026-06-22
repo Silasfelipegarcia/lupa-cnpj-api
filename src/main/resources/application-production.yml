@@ -18,6 +18,7 @@ cnpj:
 
 mercadopago:
   access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+  public-key: ${MERCADOPAGO_PUBLIC_KEY:}
   frontend-url: ${FRONTEND_URL:https://lupa-cnpj.vercel.app}
   api-public-url: ${API_PUBLIC_URL:https://lupa-cnpj-api-production.up.railway.app}
   premium-price-cents: 4990

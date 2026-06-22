@@ -1,8 +1,13 @@
 package br.com.dadoscnpj.controller;
 
+import br.com.dadoscnpj.dto.ChargePlanRequest;
+import br.com.dadoscnpj.dto.ChargePlanResponse;
 import br.com.dadoscnpj.dto.CheckoutRequest;
 import br.com.dadoscnpj.dto.CheckoutResponse;
+import br.com.dadoscnpj.dto.PaymentConfigResponse;
 import br.com.dadoscnpj.dto.PaymentHistoryItemResponse;
+import br.com.dadoscnpj.dto.SaveCardRequest;
+import br.com.dadoscnpj.dto.SavedCardResponse;
 import br.com.dadoscnpj.payment.MercadoPagoPaymentService;
 import br.com.dadoscnpj.security.SecurityUtils;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +37,36 @@ public class PaymentController {
                 request.getPlan()));
     }
 
+    @GetMapping("/config")
+    public ResponseEntity<PaymentConfigResponse> config() {
+        return ResponseEntity.ok(paymentService.obterConfig());
+    }
+
     @GetMapping("/history")
     public ResponseEntity<List<PaymentHistoryItemResponse>> historico() {
         return ResponseEntity.ok(paymentService.listarHistorico(SecurityUtils.currentUserId()));
+    }
+
+    @GetMapping("/cards")
+    public ResponseEntity<List<SavedCardResponse>> cartoes() {
+        return ResponseEntity.ok(paymentService.listarCartoes(SecurityUtils.currentUserId()));
+    }
+
+    @PostMapping("/cards")
+    public ResponseEntity<SavedCardResponse> salvarCartao(@RequestBody SaveCardRequest request) {
+        return ResponseEntity.status(201).body(
+                paymentService.salvarCartao(SecurityUtils.currentUserId(), request.getToken()));
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/cards/{cardId}")
+    public ResponseEntity<Void> removerCartao(@org.springframework.web.bind.annotation.PathVariable String cardId) {
+        paymentService.removerCartao(SecurityUtils.currentUserId(), cardId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/charge")
+    public ResponseEntity<ChargePlanResponse> cobrar(@RequestBody ChargePlanRequest request) {
+        return ResponseEntity.ok(paymentService.cobrarPlano(SecurityUtils.currentUserId(), request));
     }
 
     @PostMapping("/mercadopago/webhook")

@@ -76,6 +76,7 @@ cnpj:
 
 mercadopago:
   access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+  public-key: ${MERCADOPAGO_PUBLIC_KEY:}
   frontend-url: ${FRONTEND_URL:http://localhost:4200}
   api-public-url: ${API_PUBLIC_URL:http://localhost:8080}
   premium-price-cents: 4990
