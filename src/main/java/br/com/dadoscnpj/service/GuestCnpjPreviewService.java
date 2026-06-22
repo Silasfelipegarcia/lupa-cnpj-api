@@ -45,8 +45,8 @@ public class GuestCnpjPreviewService {
             PlanLimits free = limitesPlanoFree();
             throw new IllegalStateException(
                     "Você já usou sua consulta gratuita completa. Crie uma conta grátis e consulte até "
-                            + free.maxDirectCnpjPerDay() + " CNPJs por dia, com planilhas de até "
-                            + free.maxRowsPerFile() + " empresas.");
+                            + free.maxDirectCnpjPerDay() + " CNPJs únicos por dia, com até "
+                            + free.maxBatchSearchesPerDay() + " empresas em planilha por dia.");
         }
 
         String cnpj = CnpjValidator.removerMascara(cnpjInformado);

@@ -171,7 +171,7 @@ public class ImportJobQueueService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         usageTrackingService.validarLinhasPorPlano(user, linhas.size());
-        usageTrackingService.validarEIncrementarBatch(userId);
+        usageTrackingService.validarEIncrementarBatch(userId, linhas.size());
 
         int tetoGlobal = securityProperties.getMaxRowsPerFile();
         if (linhas.size() > tetoGlobal) {

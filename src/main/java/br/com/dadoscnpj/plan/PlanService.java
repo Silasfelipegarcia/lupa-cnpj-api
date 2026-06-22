@@ -51,8 +51,8 @@ public class PlanService {
         item.setPlan(plan);
         item.setNome(planLimitsService.nomeExibicao(plan));
         item.setMaxRowsPerFile(limits.maxRowsPerFile());
-        item.setBatchSearchesPerDay(formatarLimite(limits.maxBatchSearchesPerDay()));
-        item.setDirectCnpjPerDay(formatarLimite(limits.maxDirectCnpjPerDay()));
+        item.setBatchSearchesPerDay(formatarLimiteBatch(plan, limits));
+        item.setDirectCnpjPerDay(formatarLimiteDirect(plan, limits));
         item.setPriceCents(priceCents);
         item.setPriceLabel(priceCents == 0 ? "Grátis" : String.format("R$ %.2f/mês", priceCents / 100.0));
         return item;
@@ -67,5 +67,25 @@ public class PlanService {
 
     private String formatarLimite(Integer valor) {
         return valor == null ? "Ilimitado" : String.valueOf(valor);
+    }
+
+    private String formatarLimiteBatch(SubscriptionPlan plan, PlanLimits limits) {
+        if (limits.isUnlimitedBatch()) {
+            return "Ilimitado";
+        }
+        if (plan == SubscriptionPlan.FREE) {
+            return limits.maxBatchSearchesPerDay() + " empresas/dia";
+        }
+        return limits.maxBatchSearchesPerDay() + " buscas/dia";
+    }
+
+    private String formatarLimiteDirect(SubscriptionPlan plan, PlanLimits limits) {
+        if (limits.isUnlimitedDirect()) {
+            return "Ilimitado";
+        }
+        if (plan == SubscriptionPlan.FREE) {
+            return limits.maxDirectCnpjPerDay() + " únicos/dia";
+        }
+        return formatarLimite(limits.maxDirectCnpjPerDay());
     }
 }

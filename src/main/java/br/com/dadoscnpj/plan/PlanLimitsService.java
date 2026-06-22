@@ -17,7 +17,7 @@ public class PlanLimitsService {
             return new PlanLimits(Integer.MAX_VALUE, null, null);
         }
         return switch (user.getPlan()) {
-            case FREE -> new PlanLimits(10, 1, 5);
+            case FREE -> new PlanLimits(10, 10, 15);
             case PREMIUM -> new PlanLimits(100, 15, null);
             case PRO_PLUS -> new PlanLimits(900, null, null);
         };
