@@ -43,7 +43,8 @@ API em `http://localhost:8080`.
 | POST | `/cnpj/import` | Upload CSV → retorna `jobId` |
 | GET | `/cnpj/import/{jobId}/status` | Progresso + resultados parciais |
 | GET | `/cnpj/import/{jobId}/download` | Download do CSV final |
-| GET | `/actuator/health` | Health check |
+| GET | `/health` | Health check |
+| GET | `/actuator/health` | Health check (Spring Actuator) |
 
 ## CSV de entrada
 
