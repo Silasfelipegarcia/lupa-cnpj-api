@@ -111,7 +111,7 @@ public class CnpjImportService {
 
                 if (cnpjNorm.matches("\\d{14}")) {
                     CnpjResult emCache = cachePorCnpj.get(cnpjNorm);
-                    if (emCache != null) {
+                    if (isSucesso(emCache)) {
                         return CnpjResult.reutilizar(linha, emCache);
                     }
 
@@ -141,7 +141,7 @@ public class CnpjImportService {
             if (cnpjApiProperties.isPesquisaRazaoSocialAtiva() && linha.temRazaoSocial()) {
                 String chaveRazao = chaveRazaoSocial(linha.getRazaoSocial());
                 CnpjResult razaoEmCache = cachePorRazaoSocial.get(chaveRazao);
-                if (razaoEmCache != null) {
+                if (isSucesso(razaoEmCache)) {
                     return CnpjResult.reutilizar(linha, razaoEmCache);
                 }
 
@@ -156,7 +156,7 @@ public class CnpjImportService {
                     }
 
                     CnpjResult emCache = cachePorCnpj.get(cnpjResolvido);
-                    if (emCache != null) {
+                    if (isSucesso(emCache)) {
                         return registrarCache(linha, CnpjResult.reutilizar(linha, emCache),
                                 cnpjResolvido, cachePorCnpj, cachePorRazaoSocial);
                     }
@@ -197,14 +197,14 @@ public class CnpjImportService {
         String cnpj = chaveCnpj(linha);
         if (cnpj != null) {
             CnpjResult anterior = cachePorCnpj.get(cnpj);
-            if (anterior != null) {
+            if (isSucesso(anterior)) {
                 return CnpjResult.reutilizar(linha, anterior);
             }
         }
 
         if (linha.temRazaoSocial()) {
             CnpjResult anterior = cachePorRazaoSocial.get(chaveRazaoSocial(linha.getRazaoSocial()));
-            if (anterior != null) {
+            if (isSucesso(anterior)) {
                 return CnpjResult.reutilizar(linha, anterior);
             }
         }
@@ -212,11 +212,19 @@ public class CnpjImportService {
         return null;
     }
 
+    private boolean isSucesso(CnpjResult resultado) {
+        return resultado != null && "SUCESSO".equals(resultado.getStatusConsulta());
+    }
+
     private CnpjResult registrarCache(ImportRow linha,
                                         CnpjResult resultado,
                                         String cnpjChave,
                                         Map<String, CnpjResult> cachePorCnpj,
                                         Map<String, CnpjResult> cachePorRazaoSocial) {
+        if (!isSucesso(resultado)) {
+            return resultado;
+        }
+
         if (cnpjChave != null && cnpjChave.matches("\\d{14}")) {
             cachePorCnpj.put(cnpjChave, resultado);
         } else {

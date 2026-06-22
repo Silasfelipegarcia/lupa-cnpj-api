@@ -40,6 +40,7 @@ cnpj:
     token: ${CNPJ_WS_TOKEN:${CNPJ_API_TOKEN:}}
     pesquisa-razao-social-habilitada: ${PESQUISA_RAZAO_SOCIAL:false}
     rate-limit-per-minute: 3
+    commercial-rate-limit-per-minute: 60
     timeout-seconds: 30
 
 logging:

@@ -18,6 +18,12 @@ public class CnpjApiStartupLogger {
 
     @PostConstruct
     public void logarConfiguracao() {
+        if (properties.isConsultaComercialAtiva()) {
+            log.info("Consulta CNPJ via API comercial (token configurado)");
+        } else {
+            log.info("Consulta CNPJ via API pública (3 req/min)");
+        }
+
         if (properties.isPesquisaRazaoSocialAtiva()) {
             log.info("Busca por razão social habilitada (CNPJ.ws comercial)");
         } else if (properties.isPesquisaRazaoSocialHabilitada()) {

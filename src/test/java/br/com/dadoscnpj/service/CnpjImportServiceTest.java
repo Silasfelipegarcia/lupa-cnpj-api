@@ -161,6 +161,32 @@ class CnpjImportServiceTest {
         assertEquals(0, resolucao.chamadas);
     }
 
+    @Test
+    void naoDeveReutilizarErroAnteriorDaMesmaRazaoSocial() throws Exception {
+        cnpjApiProperties = pesquisaDesligada();
+        CnpjImportService service = criarService();
+        String razaoSocial = "USIEXPERT USINAGEM, FERRAMENTARIA E MANUTENCAO INDUSTRIAL LTDA";
+
+        CnpjResponse response = new CnpjResponse();
+        response.setRazaoSocial(razaoSocial);
+
+        cnpjConsulta.enfileirarErro(new CnpjClient.CnpjConsultaException("CNPJ não encontrado na API pública", null));
+        cnpjConsulta.enfileirarSucesso(response);
+
+        Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheCnpj = new HashMap<>();
+        Map<String, br.com.dadoscnpj.dto.CnpjResult> cacheRazao = new HashMap<>();
+
+        var comCnpjErrado = service.processarLinha(
+                new ImportRow("00000000000100", razaoSocial), 1, cacheCnpj, cacheRazao);
+        var comCnpjCorreto = service.processarLinha(
+                new ImportRow("35107018000171", razaoSocial), 2, cacheCnpj, cacheRazao);
+
+        assertEquals("ERRO", comCnpjErrado.getStatusConsulta());
+        assertEquals("SUCESSO", comCnpjCorreto.getStatusConsulta());
+        assertEquals("35107018000171", cnpjConsulta.ultimoCnpj);
+        assertEquals(2, cnpjConsulta.chamadas);
+    }
+
     private static class FakeCnpjConsulta implements CnpjConsultaPort {
         private final Deque<Object> respostas = new ArrayDeque<>();
         int chamadas;

@@ -10,6 +10,7 @@ public class CnpjApiProperties {
     private String token = "";
     private boolean pesquisaRazaoSocialHabilitada = false;
     private int rateLimitPerMinute = 3;
+    private int commercialRateLimitPerMinute = 60;
     private int timeoutSeconds = 30;
 
     public String getBaseUrl() {
@@ -52,6 +53,18 @@ public class CnpjApiProperties {
         return token != null && !token.isBlank();
     }
 
+    public boolean isConsultaComercialAtiva() {
+        return isPesquisaHabilitada();
+    }
+
+    public int getCommercialRateLimitPerMinute() {
+        return commercialRateLimitPerMinute;
+    }
+
+    public void setCommercialRateLimitPerMinute(int commercialRateLimitPerMinute) {
+        this.commercialRateLimitPerMinute = commercialRateLimitPerMinute;
+    }
+
     public int getRateLimitPerMinute() {
         return rateLimitPerMinute;
     }
@@ -69,6 +82,28 @@ public class CnpjApiProperties {
     }
 
     public long getMinDelayBetweenRequestsMs() {
-        return 60_000L / Math.max(rateLimitPerMinute, 1);
+        int rpm = isConsultaComercialAtiva() ? commercialRateLimitPerMinute : rateLimitPerMinute;
+        return 60_000L / Math.max(rpm, 1);
+    }
+
+    public String getConsultaBaseUrl() {
+        if (isConsultaComercialAtiva()) {
+            return "https://comercial.cnpj.ws/cnpj";
+        }
+        return normalizarBaseUrlPublica(baseUrl);
+    }
+
+    private String normalizarBaseUrlPublica(String url) {
+        if (url == null || url.isBlank()) {
+            return "https://publica.cnpj.ws/cnpj";
+        }
+        String trimmed = url.trim().replaceAll("/+$", "");
+        if (trimmed.endsWith("/cnpj")) {
+            return trimmed;
+        }
+        if (trimmed.endsWith("publica.cnpj.ws")) {
+            return trimmed + "/cnpj";
+        }
+        return trimmed;
     }
 }
