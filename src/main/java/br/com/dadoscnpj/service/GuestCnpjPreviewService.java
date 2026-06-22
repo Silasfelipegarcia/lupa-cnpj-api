@@ -2,38 +2,36 @@ package br.com.dadoscnpj.service;
 
 import br.com.dadoscnpj.client.CnpjClient;
 import br.com.dadoscnpj.config.SecurityProperties;
+import br.com.dadoscnpj.domain.SubscriptionPlan;
+import br.com.dadoscnpj.domain.UserRole;
 import br.com.dadoscnpj.dto.CnpjPreviewQuotaResponse;
 import br.com.dadoscnpj.dto.CnpjPreviewResponse;
 import br.com.dadoscnpj.dto.CnpjResponse;
+import br.com.dadoscnpj.dto.CnpjResult;
+import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.entity.UserEntity;
+import br.com.dadoscnpj.plan.PlanLimits;
+import br.com.dadoscnpj.plan.PlanLimitsService;
 import br.com.dadoscnpj.util.CnpjValidator;
 import br.com.dadoscnpj.util.IpRateLimiter;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 public class GuestCnpjPreviewService {
-
-    private static final List<String> CAMPOS_COM_LOGIN = List.of(
-            "Nome fantasia",
-            "Situação cadastral",
-            "Telefones",
-            "E-mail",
-            "Endereço completo",
-            "Cidade e UF",
-            "CNAE principal"
-    );
 
     private final CnpjClient cnpjClient;
     private final IpRateLimiter ipRateLimiter;
     private final SecurityProperties securityProperties;
+    private final PlanLimitsService planLimitsService;
 
     public GuestCnpjPreviewService(CnpjClient cnpjClient,
                                    IpRateLimiter ipRateLimiter,
-                                   SecurityProperties securityProperties) {
+                                   SecurityProperties securityProperties,
+                                   PlanLimitsService planLimitsService) {
         this.cnpjClient = cnpjClient;
         this.ipRateLimiter = ipRateLimiter;
         this.securityProperties = securityProperties;
+        this.planLimitsService = planLimitsService;
     }
 
     public CnpjPreviewQuotaResponse obterQuota(String clientIp) {
@@ -44,9 +42,11 @@ public class GuestCnpjPreviewService {
     public CnpjPreviewResponse consultar(String clientIp, String cnpjInformado) throws InterruptedException {
         CnpjPreviewQuotaResponse quota = obterQuota(clientIp);
         if (quota.isLimiteAtingido()) {
+            PlanLimits free = limitesPlanoFree();
             throw new IllegalStateException(
-                    "Você atingiu o limite de " + quota.getConsultasLimite()
-                            + " consultas gratuitas. Crie uma conta para consultar sem limite.");
+                    "Você já usou sua consulta gratuita completa. Crie uma conta grátis e consulte até "
+                            + free.maxDirectCnpjPerDay() + " CNPJs por dia, com planilhas de até "
+                            + free.maxRowsPerFile() + " empresas.");
         }
 
         String cnpj = CnpjValidator.removerMascara(cnpjInformado);
@@ -64,31 +64,51 @@ public class GuestCnpjPreviewService {
 
         if (!registrarUso(clientIp)) {
             throw new IllegalStateException(
-                    "Você atingiu o limite de consultas gratuitas. Crie uma conta para continuar.");
+                    "Você já usou sua consulta gratuita completa. Crie uma conta para continuar consultando.");
         }
 
         CnpjPreviewQuotaResponse quotaAtualizada = obterQuota(clientIp);
+        CnpjResult dados = CnpjResult.sucesso(new ImportRow(cnpj, null), cnpj, response, "");
+        PlanLimits free = limitesPlanoFree();
 
         CnpjPreviewResponse preview = new CnpjPreviewResponse();
-        preview.setCnpj(CnpjValidator.formatar(cnpj));
-        preview.setRazaoSocial(extrairRazaoSocial(response));
+        preview.setCnpj(dados.getCnpj());
+        preview.setRazaoSocial(valorOuPadrao(dados.getRazaoSocial(), "Razão social não informada na base"));
+        preview.setNomeFantasia(dados.getNomeFantasia());
+        preview.setSituacaoCadastral(dados.getSituacaoCadastral());
+        preview.setTelefone1(dados.getTelefone1());
+        preview.setTelefone2(dados.getTelefone2());
+        preview.setEmail(dados.getEmail());
+        preview.setLogradouro(dados.getLogradouro());
+        preview.setNumero(dados.getNumero());
+        preview.setComplemento(dados.getComplemento());
+        preview.setBairro(dados.getBairro());
+        preview.setCidade(dados.getCidade());
+        preview.setUf(dados.getUf());
+        preview.setCep(dados.getCep());
+        preview.setCnaePrincipal(dados.getCnaePrincipal());
         preview.setConsultasUsadas(quotaAtualizada.getConsultasUsadas());
         preview.setConsultasLimite(quotaAtualizada.getConsultasLimite());
         preview.setConsultasRestantes(quotaAtualizada.getConsultasRestantes());
-        preview.setCamposComLogin(CAMPOS_COM_LOGIN);
+        preview.setCadastroLimiteCnpjDia(valorInteiro(free.maxDirectCnpjPerDay()));
+        preview.setCadastroLimitePlanilha(free.maxRowsPerFile());
+        preview.setCadastroLimiteLoteDia(valorInteiro(free.maxBatchSearchesPerDay()));
         return preview;
     }
 
-    private String extrairRazaoSocial(CnpjResponse response) {
-        if (response.getRazaoSocial() != null && !response.getRazaoSocial().isBlank()) {
-            return response.getRazaoSocial().trim();
-        }
-        if (response.getEstabelecimento() != null
-                && response.getEstabelecimento().getNomeFantasia() != null
-                && !response.getEstabelecimento().getNomeFantasia().isBlank()) {
-            return response.getEstabelecimento().getNomeFantasia().trim();
-        }
-        return "Razão social não informada na base";
+    private int valorInteiro(Integer valor) {
+        return valor != null ? valor : 0;
+    }
+
+    private PlanLimits limitesPlanoFree() {
+        UserEntity free = new UserEntity();
+        free.setRole(UserRole.USER);
+        free.setPlan(SubscriptionPlan.FREE);
+        return planLimitsService.limitesDe(free);
+    }
+
+    private String valorOuPadrao(String valor, String padrao) {
+        return valor != null && !valor.isBlank() ? valor.trim() : padrao;
     }
 
     private int obterUso(String clientIp) {
