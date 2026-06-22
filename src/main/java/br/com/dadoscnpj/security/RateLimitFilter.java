@@ -42,7 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String path = request.getRequestURI();
+        String path = PublicApiRoutes.normalizePath(request.getRequestURI());
         if (!path.startsWith("/cnpj") && !path.startsWith("/auth")) {
             filterChain.doFilter(request, response);
             return;
@@ -90,6 +90,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if ("POST".equalsIgnoreCase(method) && path.matches("/auth/(login|register)")) {
             return new RateLimitRule(securityProperties.getAuthPerMinute(), MINUTE_MS, 60);
+        }
+        if ("GET".equalsIgnoreCase(method) && path.startsWith("/cnpj/preview")) {
+            return new RateLimitRule(securityProperties.getGuestPreviewPerMinute(), MINUTE_MS, 60);
         }
         return null;
     }

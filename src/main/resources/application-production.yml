@@ -15,3 +15,10 @@ cnpj:
   api:
     token: ${CNPJ_WS_TOKEN:${CNPJ_API_TOKEN:}}
     pesquisa-razao-social-habilitada: ${PESQUISA_RAZAO_SOCIAL:false}
+
+mercadopago:
+  access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+  frontend-url: ${FRONTEND_URL:https://lupa-cnpj.vercel.app}
+  api-public-url: ${API_PUBLIC_URL:https://lupa-cnpj-api-production.up.railway.app}
+  premium-price-cents: 4990
+  pro-plus-price-cents: 9990

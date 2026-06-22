@@ -6,8 +6,11 @@ import br.com.dadoscnpj.dto.ImportJobStatus;
 import br.com.dadoscnpj.dto.ImportJobSummaryResponse;
 import br.com.dadoscnpj.dto.ImportRow;
 import br.com.dadoscnpj.entity.ImportJobEntity;
+import br.com.dadoscnpj.entity.UserEntity;
 import br.com.dadoscnpj.exception.ForbiddenException;
 import br.com.dadoscnpj.model.ImportJob;
+import br.com.dadoscnpj.plan.UsageTrackingService;
+import br.com.dadoscnpj.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,16 +32,22 @@ public class ImportJobQueueService {
     private final CnpjImportService cnpjImportService;
     private final ExecutorService importJobExecutor;
     private final SecurityProperties securityProperties;
+    private final UserRepository userRepository;
+    private final UsageTrackingService usageTrackingService;
     private final ConcurrentLinkedQueue<String> fila = new ConcurrentLinkedQueue<>();
 
     public ImportJobQueueService(ImportJobStore jobStore,
                                  CnpjImportService cnpjImportService,
                                  ExecutorService importJobExecutor,
-                                 SecurityProperties securityProperties) {
+                                 SecurityProperties securityProperties,
+                                 UserRepository userRepository,
+                                 UsageTrackingService usageTrackingService) {
         this.jobStore = jobStore;
         this.cnpjImportService = cnpjImportService;
         this.importJobExecutor = importJobExecutor;
         this.securityProperties = securityProperties;
+        this.userRepository = userRepository;
+        this.usageTrackingService = usageTrackingService;
     }
 
     public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
@@ -159,10 +168,15 @@ public class ImportJobQueueService {
             throw new IllegalArgumentException("O arquivo não contém linhas válidas para importação.");
         }
 
-        if (linhas.size() > securityProperties.getMaxRowsPerFile()) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        usageTrackingService.validarLinhasPorPlano(user, linhas.size());
+        usageTrackingService.validarEIncrementarBatch(userId);
+
+        int tetoGlobal = securityProperties.getMaxRowsPerFile();
+        if (linhas.size() > tetoGlobal) {
             throw new IllegalArgumentException(String.format(
-                    "O arquivo excede o limite de %d linhas. Divida em arquivos menores.",
-                    securityProperties.getMaxRowsPerFile()));
+                    "O arquivo excede o limite global de %d linhas.", tetoGlobal));
         }
 
         if (fila.size() >= securityProperties.getMaxQueueSize()) {

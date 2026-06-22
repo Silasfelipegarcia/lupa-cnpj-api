@@ -26,6 +26,39 @@ public class IpRateLimiter {
         return window.count.incrementAndGet() <= maxRequests;
     }
 
+    public int obterUso(String key, long windowMs) {
+        long now = System.currentTimeMillis();
+        Window window = windows.get(key);
+        if (window == null || now - window.startMs >= windowMs) {
+            return 0;
+        }
+        return window.count.get();
+    }
+
+    public boolean registrarUsoSeAbaixoDoLimite(String key, int maxRequests, long windowMs) {
+        long now = System.currentTimeMillis();
+        Window[] resultado = new Window[1];
+        boolean[] permitido = new boolean[1];
+
+        windows.compute(key, (k, current) -> {
+            Window window = current;
+            if (window == null || now - window.startMs >= windowMs) {
+                window = new Window(now, new AtomicInteger(0));
+            }
+            if (window.count.get() >= maxRequests) {
+                permitido[0] = false;
+                resultado[0] = window;
+                return window;
+            }
+            window.count.incrementAndGet();
+            permitido[0] = true;
+            resultado[0] = window;
+            return window;
+        });
+
+        return permitido[0];
+    }
+
     public void limparExpirados(long windowMs) {
         long cutoff = System.currentTimeMillis() - windowMs;
         Iterator<Map.Entry<String, Window>> iterator = windows.entrySet().iterator();

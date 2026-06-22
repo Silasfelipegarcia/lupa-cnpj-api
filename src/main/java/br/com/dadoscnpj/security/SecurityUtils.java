@@ -16,4 +16,16 @@ public final class SecurityUtils {
         }
         throw new IllegalStateException("Usuário não autenticado");
     }
+
+    public static UUID currentUserIdOrNull() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.getId();
+        }
+        return null;
+    }
 }

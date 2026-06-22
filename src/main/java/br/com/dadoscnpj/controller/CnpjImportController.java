@@ -3,10 +3,12 @@ package br.com.dadoscnpj.controller;
 import br.com.dadoscnpj.config.CnpjApiProperties;
 import br.com.dadoscnpj.csv.CnpjExcelTemplateWriter;
 import br.com.dadoscnpj.dto.CnpjConfigResponse;
+import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportJobSummaryResponse;
 import br.com.dadoscnpj.dto.ImportRow;
 import br.com.dadoscnpj.security.SecurityUtils;
+import br.com.dadoscnpj.service.CnpjDirectConsultaService;
 import br.com.dadoscnpj.service.CnpjImportService;
 import br.com.dadoscnpj.service.ImportJobQueueService;
 import org.slf4j.Logger;
@@ -42,20 +44,29 @@ public class CnpjImportController {
     private final ImportJobQueueService jobQueueService;
     private final CnpjExcelTemplateWriter templateWriter;
     private final CnpjApiProperties cnpjApiProperties;
+    private final CnpjDirectConsultaService directConsultaService;
 
     public CnpjImportController(CnpjImportService cnpjImportService,
                                 ImportJobQueueService jobQueueService,
                                 CnpjExcelTemplateWriter templateWriter,
-                                CnpjApiProperties cnpjApiProperties) {
+                                CnpjApiProperties cnpjApiProperties,
+                                CnpjDirectConsultaService directConsultaService) {
         this.cnpjImportService = cnpjImportService;
         this.jobQueueService = jobQueueService;
         this.templateWriter = templateWriter;
         this.cnpjApiProperties = cnpjApiProperties;
+        this.directConsultaService = directConsultaService;
     }
 
     @GetMapping("/config")
     public ResponseEntity<CnpjConfigResponse> configuracao() {
         return ResponseEntity.ok(new CnpjConfigResponse(cnpjApiProperties.isPesquisaRazaoSocialAtiva()));
+    }
+
+    @GetMapping("/consulta")
+    public ResponseEntity<CnpjResult> consultarCnpj(@RequestParam("cnpj") String cnpj) throws Exception {
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(directConsultaService.consultar(userId, cnpj));
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

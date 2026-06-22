@@ -16,6 +16,9 @@ public class SecurityProperties {
     private int maxActiveJobsPerIp = 1;
     private int maxActiveJobsPerUser = 1;
     private int jobTtlHours = 24;
+    private int guestPreviewMax = 3;
+    private long guestPreviewWindowDays = 365;
+    private int guestPreviewPerMinute = 10;
 
     public int getImportPerHour() {
         return importPerHour;
@@ -103,5 +106,29 @@ public class SecurityProperties {
 
     public void setJobTtlHours(int jobTtlHours) {
         this.jobTtlHours = jobTtlHours;
+    }
+
+    public int getGuestPreviewMax() {
+        return guestPreviewMax;
+    }
+
+    public void setGuestPreviewMax(int guestPreviewMax) {
+        this.guestPreviewMax = guestPreviewMax;
+    }
+
+    public long getGuestPreviewWindowDays() {
+        return guestPreviewWindowDays;
+    }
+
+    public void setGuestPreviewWindowDays(long guestPreviewWindowDays) {
+        this.guestPreviewWindowDays = guestPreviewWindowDays;
+    }
+
+    public int getGuestPreviewPerMinute() {
+        return guestPreviewPerMinute;
+    }
+
+    public void setGuestPreviewPerMinute(int guestPreviewPerMinute) {
+        this.guestPreviewPerMinute = guestPreviewPerMinute;
     }
 }

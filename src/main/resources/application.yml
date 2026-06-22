@@ -54,6 +54,9 @@ app:
     max-active-jobs-per-ip: 1
     max-active-jobs-per-user: 1
     job-ttl-hours: 24
+    guest-preview-max: 1
+    guest-preview-window-days: 365
+    guest-preview-per-minute: 10
 
 management:
   endpoints:
@@ -71,6 +74,14 @@ cnpj:
     commercial-rate-limit-per-minute: 60
     timeout-seconds: 30
 
+mercadopago:
+  access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}
+  api-public-url: ${API_PUBLIC_URL:http://localhost:8080}
+  premium-price-cents: 4990
+  pro-plus-price-cents: 9990
+
 logging:
   level:
     br.com.dadoscnpj: INFO
+    AUDIT: INFO

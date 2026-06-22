@@ -1,10 +1,14 @@
 package br.com.dadoscnpj.service;
 
+import br.com.dadoscnpj.domain.SubscriptionPlan;
+import br.com.dadoscnpj.domain.UserRole;
 import br.com.dadoscnpj.dto.AuthResponse;
 import br.com.dadoscnpj.dto.LoginRequest;
 import br.com.dadoscnpj.dto.RegisterRequest;
 import br.com.dadoscnpj.dto.UserResponse;
 import br.com.dadoscnpj.entity.UserEntity;
+import br.com.dadoscnpj.plan.PlanLimitsService;
+import br.com.dadoscnpj.plan.PlanService;
 import br.com.dadoscnpj.repository.UserRepository;
 import br.com.dadoscnpj.util.CpfValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,13 +24,19 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final PlanService planService;
+    private final PlanLimitsService planLimitsService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       PlanService planService,
+                       PlanLimitsService planLimitsService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.planService = planService;
+        this.planLimitsService = planLimitsService;
     }
 
     public AuthResponse registrar(RegisterRequest request) {
@@ -50,6 +60,8 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setCreatedAt(Instant.now());
         user.setEnabled(true);
+        user.setRole(UserRole.USER);
+        user.setPlan(SubscriptionPlan.FREE);
 
         userRepository.save(user);
         return montarAuthResponse(user);
@@ -100,7 +112,12 @@ public class AuthService {
     }
 
     private UserResponse toUserResponse(UserEntity user) {
-        return new UserResponse(user.getId(), user.getNome(), user.getEmail(), user.getCpf());
+        UserResponse response = new UserResponse(user.getId(), user.getNome(), user.getEmail(), user.getCpf());
+        response.setRole(user.getRole());
+        response.setPlan(user.getPlan());
+        response.setPlanNome(planLimitsService.isMaster(user) ? "Master" : planLimitsService.nomeExibicao(user.getPlan()));
+        response.setUsage(planService.montarUsage(user));
+        return response;
     }
 
     private String normalizarEmail(String email) {

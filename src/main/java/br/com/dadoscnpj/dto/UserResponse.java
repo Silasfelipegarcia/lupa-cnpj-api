@@ -1,5 +1,8 @@
 package br.com.dadoscnpj.dto;
 
+import br.com.dadoscnpj.domain.SubscriptionPlan;
+import br.com.dadoscnpj.domain.UserRole;
+
 import java.util.UUID;
 
 public class UserResponse {
@@ -8,6 +11,10 @@ public class UserResponse {
     private String nome;
     private String email;
     private String cpf;
+    private UserRole role;
+    private SubscriptionPlan plan;
+    private String planNome;
+    private PlanUsageResponse usage;
 
     public UserResponse() {
     }
@@ -49,5 +56,37 @@ public class UserResponse {
 
     public void setCpf(String cpf) {
         this.cpf = cpf;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+
+    public SubscriptionPlan getPlan() {
+        return plan;
+    }
+
+    public void setPlan(SubscriptionPlan plan) {
+        this.plan = plan;
+    }
+
+    public String getPlanNome() {
+        return planNome;
+    }
+
+    public void setPlanNome(String planNome) {
+        this.planNome = planNome;
+    }
+
+    public PlanUsageResponse getUsage() {
+        return usage;
+    }
+
+    public void setUsage(PlanUsageResponse usage) {
+        this.usage = usage;
     }
 }

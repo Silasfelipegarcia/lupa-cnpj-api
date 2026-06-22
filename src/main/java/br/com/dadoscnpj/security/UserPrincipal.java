@@ -1,6 +1,9 @@
 package br.com.dadoscnpj.security;
 
+import br.com.dadoscnpj.domain.SubscriptionPlan;
+import br.com.dadoscnpj.domain.UserRole;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -11,19 +14,41 @@ public class UserPrincipal implements UserDetails {
 
     private final UUID id;
     private final String email;
+    private final UserRole role;
+    private final SubscriptionPlan plan;
 
-    public UserPrincipal(UUID id, String email) {
+    public UserPrincipal(UUID id, String email, UserRole role, SubscriptionPlan plan) {
         this.id = id;
         this.email = email;
+        this.role = role;
+        this.plan = plan;
     }
 
     public UUID getId() {
         return id;
     }
 
+    public UserRole getRole() {
+        return role;
+    }
+
+    public SubscriptionPlan getPlan() {
+        return plan;
+    }
+
+    public boolean isAdmin() {
+        return role == UserRole.ADMIN;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        if (role == UserRole.ADMIN) {
+            return List.of(
+                    new SimpleGrantedAuthority("ROLE_ADMIN"),
+                    new SimpleGrantedAuthority("ROLE_USER")
+            );
+        }
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override

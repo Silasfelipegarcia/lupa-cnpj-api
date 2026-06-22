@@ -30,11 +30,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/auth/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/health", "/actuator/health", "/").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/plans", "/plans/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/cnpj/preview", "/cnpj/preview/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/payments/mercadopago/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/payments/mercadopago/webhook").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/cnpj/**").authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
