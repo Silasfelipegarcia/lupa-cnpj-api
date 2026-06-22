@@ -104,14 +104,7 @@ public class CnpjResult {
         copia.setCnaePrincipal(original.getCnaePrincipal());
         copia.setStatusConsulta(original.getStatusConsulta());
         copia.setErro(original.getErro());
-
-        String observacao = nullSafe(original.getObservacao());
-        if (!observacao.contains("duplicado")) {
-            observacao = observacao.isBlank()
-                    ? "Registro duplicado na planilha; resultado reutilizado"
-                    : observacao + "; Registro duplicado na planilha; resultado reutilizado";
-        }
-        copia.setObservacao(observacao);
+        copia.setObservacao(nullSafe(original.getObservacao()));
         return copia;
     }
 

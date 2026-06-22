@@ -85,6 +85,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("GET".equalsIgnoreCase(method) && path.matches("/cnpj/import/[^/]+/download")) {
             return new RateLimitRule(securityProperties.getDownloadPerHour(), HOUR_MS, 3600);
         }
+        if ("DELETE".equalsIgnoreCase(method) && path.matches("/cnpj/import/[^/]+")) {
+            return new RateLimitRule(securityProperties.getStatusPerMinute(), MINUTE_MS, 60);
+        }
         return null;
     }
 
@@ -94,6 +97,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if (path.matches("/cnpj/import/[^/]+/download")) {
             return clientIp + ":download";
+        }
+        if (path.matches("/cnpj/import/[^/]+") && "DELETE".equalsIgnoreCase(method)) {
+            return clientIp + ":cancel";
         }
         return clientIp + ":" + method + ":" + path;
     }

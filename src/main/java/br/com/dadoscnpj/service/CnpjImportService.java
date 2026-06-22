@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 @Service
@@ -52,6 +53,13 @@ public class CnpjImportService {
 
     public List<CnpjResult> processarLinhas(List<ImportRow> linhas, Consumer<ProgressoCnpj> onProgress)
             throws InterruptedException, IOException {
+        return processarLinhas(linhas, onProgress, null);
+    }
+
+    public List<CnpjResult> processarLinhas(List<ImportRow> linhas,
+                                              Consumer<ProgressoCnpj> onProgress,
+                                              BooleanSupplier continuarProcessamento)
+            throws InterruptedException, IOException {
         List<CnpjResult> resultados = new ArrayList<>();
         Map<String, CnpjResult> cachePorCnpj = new HashMap<>();
         Map<String, CnpjResult> cachePorRazaoSocial = new HashMap<>();
@@ -59,6 +67,11 @@ public class CnpjImportService {
         int atual = 0;
 
         for (ImportRow linha : linhas) {
+            if (continuarProcessamento != null && !continuarProcessamento.getAsBoolean()) {
+                log.info("Processamento interrompido pelo usuário após {} de {} linha(s)", atual, total);
+                break;
+            }
+
             atual++;
             log.info("Processando linha {}/{}", atual, total);
 

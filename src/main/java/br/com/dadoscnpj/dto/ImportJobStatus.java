@@ -4,5 +4,6 @@ public enum ImportJobStatus {
     NA_FILA,
     PROCESSANDO,
     CONCLUIDO,
-    ERRO
+    ERRO,
+    CANCELADO
 }

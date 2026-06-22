@@ -20,6 +20,7 @@ public class ImportJob {
     private final List<CnpjResult> resultados = Collections.synchronizedList(new ArrayList<>());
 
     private ImportJobStatus status = ImportJobStatus.NA_FILA;
+    private volatile boolean cancelamentoSolicitado;
     private int processados;
     private int sucesso;
     private int erros;
@@ -61,6 +62,14 @@ public class ImportJob {
 
     public void setStatus(ImportJobStatus status) {
         this.status = status;
+    }
+
+    public void solicitarCancelamento() {
+        this.cancelamentoSolicitado = true;
+    }
+
+    public boolean isCancelamentoSolicitado() {
+        return cancelamentoSolicitado;
     }
 
     public int getTotal() {

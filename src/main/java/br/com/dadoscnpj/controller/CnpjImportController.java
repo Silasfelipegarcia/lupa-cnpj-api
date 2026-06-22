@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -97,6 +98,11 @@ public class CnpjImportController {
     @GetMapping("/import/{jobId}/status")
     public ResponseEntity<ImportJobResponse> status(@PathVariable String jobId) {
         return ResponseEntity.ok(jobQueueService.consultarStatus(jobId));
+    }
+
+    @DeleteMapping("/import/{jobId}")
+    public ResponseEntity<ImportJobResponse> cancelar(@PathVariable String jobId) {
+        return ResponseEntity.ok(jobQueueService.cancelar(jobId));
     }
 
     @GetMapping("/import/{jobId}/download")

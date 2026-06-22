@@ -124,7 +124,7 @@ class CnpjImportServiceTest {
 
         assertEquals("SUCESSO", primeiro.getStatusConsulta());
         assertEquals("SUCESSO", segundo.getStatusConsulta());
-        assertTrue(segundo.getObservacao().contains("duplicado"));
+        assertEquals("", segundo.getObservacao());
         assertEquals(1, cnpjConsulta.chamadas);
     }
 
@@ -143,7 +143,7 @@ class CnpjImportServiceTest {
         var segundo = service.processarLinha(new ImportRow("", "petrobras"), 2, cacheCnpj, cacheRazao);
 
         assertEquals("SUCESSO", segundo.getStatusConsulta());
-        assertTrue(segundo.getObservacao().contains("duplicado"));
+        assertEquals("", segundo.getObservacao());
         assertEquals(1, cnpjConsulta.chamadas);
         assertEquals(1, resolucao.chamadas);
     }
