@@ -1,5 +1,6 @@
 package br.com.dadoscnpj.controller;
 
+import br.com.dadoscnpj.csv.CnpjExcelTemplateWriter;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportRow;
 import br.com.dadoscnpj.service.CnpjImportService;
@@ -32,11 +33,14 @@ public class CnpjImportController {
 
     private final CnpjImportService cnpjImportService;
     private final ImportJobQueueService jobQueueService;
+    private final CnpjExcelTemplateWriter templateWriter;
 
     public CnpjImportController(CnpjImportService cnpjImportService,
-                                ImportJobQueueService jobQueueService) {
+                                ImportJobQueueService jobQueueService,
+                                CnpjExcelTemplateWriter templateWriter) {
         this.cnpjImportService = cnpjImportService;
         this.jobQueueService = jobQueueService;
+        this.templateWriter = templateWriter;
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -52,6 +56,17 @@ public class CnpjImportController {
         ImportJobResponse job = jobQueueService.enfileirar(file.getOriginalFilename(), linhas);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(job);
+    }
+
+    @GetMapping("/template")
+    public ResponseEntity<Resource> baixarModelo() throws Exception {
+        byte[] excel = templateWriter.gerarModelo();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"lupa-cnpj-modelo.xlsx\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new ByteArrayResource(excel));
     }
 
     @GetMapping("/import/{jobId}/status")

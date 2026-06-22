@@ -22,6 +22,12 @@ public class CnpjCsvReader {
 
     private static final Logger log = LoggerFactory.getLogger(CnpjCsvReader.class);
 
+    private final CnpjPlanilhaParser parser;
+
+    public CnpjCsvReader(CnpjPlanilhaParser parser) {
+        this.parser = parser;
+    }
+
     public List<ImportRow> lerLinhas(MultipartFile file) throws IOException {
         String conteudo = new String(file.getBytes(), StandardCharsets.UTF_8);
         conteudo = removerBom(conteudo);
@@ -46,12 +52,12 @@ public class CnpjCsvReader {
                 cabecalho[i] = removerBom(cabecalho[i].trim());
             }
 
-            int indiceCnpj = encontrarIndice(cabecalho, "cnpj", "documento", "cnpj_cpf");
-            int indiceRazaoSocial = encontrarIndice(cabecalho, "razao_social", "razaosocial", "razao social", "empresa", "nome");
+            int indiceCnpj = parser.encontrarIndice(cabecalho, "cnpj", "documento", "cnpj_cpf");
+            int indiceRazaoSocial = parser.encontrarIndice(cabecalho, "razao_social", "razaosocial", "razao social", "empresa", "nome");
 
             if (indiceCnpj < 0 && indiceRazaoSocial < 0) {
                 if (cabecalho.length == 1 && pareceCnpj(cabecalho[0])) {
-                    return lerColunaUnicaSemCabecalhoValido(linhas, true);
+                    return lerColunaUnica(linhas, true);
                 }
                 if (cabecalho.length == 1) {
                     indiceCnpj = 0;
@@ -66,23 +72,13 @@ public class CnpjCsvReader {
             List<ImportRow> resultado = new ArrayList<>();
             for (int i = 1; i < linhas.size(); i++) {
                 String[] linha = linhas.get(i);
-                String cnpj = lerCampo(linha, indiceCnpj);
-                String razaoSocial = lerCampo(linha, indiceRazaoSocial);
+                String cnpj = parser.lerCampo(linha, indiceCnpj);
+                String razaoSocial = parser.lerCampoTexto(linha, indiceRazaoSocial);
 
-                cnpj = extrairCnpj(cnpj);
-                razaoSocial = razaoSocial != null ? razaoSocial.trim() : "";
-
-                if (cnpj.isEmpty() && razaoSocial.isEmpty()) {
-                    continue;
+                ImportRow importRow = parser.montarLinha(cnpj, razaoSocial);
+                if (importRow != null) {
+                    resultado.add(importRow);
                 }
-
-                if (cnpj.isEmpty() && pareceCnpj(razaoSocial)) {
-                    cnpj = CnpjValidator.removerMascara(razaoSocial);
-                    razaoSocial = "";
-                    log.debug("Linha {}: valor na coluna razão social identificado como CNPJ", i + 1);
-                }
-
-                resultado.add(new ImportRow(cnpj, razaoSocial));
             }
 
             if (resultado.isEmpty()) {
@@ -97,47 +93,25 @@ public class CnpjCsvReader {
         }
     }
 
-    private List<ImportRow> lerColunaUnicaSemCabecalhoValido(List<String[]> linhas, boolean primeiraLinhaEhDado) {
+    private List<ImportRow> lerColunaUnica(List<String[]> linhas, boolean primeiraLinhaEhDado) {
         List<ImportRow> resultado = new ArrayList<>();
         int inicio = primeiraLinhaEhDado ? 0 : 1;
 
         if (primeiraLinhaEhDado) {
-            String cnpj = extrairCnpj(linhas.get(0)[0]);
-            if (!cnpj.isEmpty()) {
-                resultado.add(new ImportRow(cnpj, ""));
+            ImportRow row = parser.montarLinha(linhas.get(0)[0], "");
+            if (row != null) {
+                resultado.add(row);
             }
             inicio = 1;
         }
 
         for (int i = inicio; i < linhas.size(); i++) {
-            String cnpj = extrairCnpj(linhas.get(i)[0]);
-            if (!cnpj.isEmpty()) {
-                resultado.add(new ImportRow(cnpj, ""));
+            ImportRow row = parser.montarLinha(linhas.get(i)[0], "");
+            if (row != null) {
+                resultado.add(row);
             }
         }
         return resultado;
-    }
-
-    private String lerCampo(String[] linha, int indice) {
-        if (indice < 0 || indice >= linha.length) {
-            return "";
-        }
-        return removerBom(linha[indice].trim());
-    }
-
-    private String extrairCnpj(String valor) {
-        if (valor == null || valor.isBlank()) {
-            return "";
-        }
-        return CnpjValidator.removerMascara(valor);
-    }
-
-    private boolean pareceCnpj(String valor) {
-        if (valor == null || valor.isBlank()) {
-            return false;
-        }
-        String digits = CnpjValidator.removerMascara(valor);
-        return digits.matches("\\d{14}");
     }
 
     private char detectarSeparador(String conteudo) {
@@ -170,30 +144,7 @@ public class CnpjCsvReader {
         return texto;
     }
 
-    private int encontrarIndice(String[] cabecalho, String... nomesPossiveis) {
-        for (int i = 0; i < cabecalho.length; i++) {
-            String coluna = normalizarNomeColuna(cabecalho[i]);
-            for (String nome : nomesPossiveis) {
-                if (coluna.equals(normalizarNomeColuna(nome))) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
-
-    private String normalizarNomeColuna(String nome) {
-        if (nome == null) {
-            return "";
-        }
-        return removerBom(nome.trim())
-                .toLowerCase()
-                .replace("ã", "a")
-                .replace("á", "a")
-                .replace("à", "a")
-                .replace("â", "a")
-                .replace("ç", "c")
-                .replace(" ", "_")
-                .replace("-", "_");
+    private boolean pareceCnpj(String valor) {
+        return CnpjValidator.removerMascara(valor).matches("\\d{14}");
     }
 }

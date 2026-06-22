@@ -2,7 +2,7 @@ package br.com.dadoscnpj.service;
 
 import br.com.dadoscnpj.client.CnpjClient;
 import br.com.dadoscnpj.client.CnpjPesquisaClient;
-import br.com.dadoscnpj.csv.CnpjCsvReader;
+import br.com.dadoscnpj.csv.CnpjPlanilhaReader;
 import br.com.dadoscnpj.csv.CnpjCsvWriter;
 import br.com.dadoscnpj.dto.CnpjResponse;
 import br.com.dadoscnpj.dto.CnpjResult;
@@ -23,23 +23,23 @@ public class CnpjImportService {
 
     private static final Logger log = LoggerFactory.getLogger(CnpjImportService.class);
 
-    private final CnpjCsvReader csvReader;
+    private final CnpjPlanilhaReader planilhaReader;
     private final CnpjCsvWriter csvWriter;
     private final CnpjClient cnpjClient;
     private final CnpjResolucaoService resolucaoService;
 
-    public CnpjImportService(CnpjCsvReader csvReader,
+    public CnpjImportService(CnpjPlanilhaReader planilhaReader,
                              CnpjCsvWriter csvWriter,
                              CnpjClient cnpjClient,
                              CnpjResolucaoService resolucaoService) {
-        this.csvReader = csvReader;
+        this.planilhaReader = planilhaReader;
         this.csvWriter = csvWriter;
         this.cnpjClient = cnpjClient;
         this.resolucaoService = resolucaoService;
     }
 
     public List<ImportRow> lerLinhasDoArquivo(MultipartFile file) throws IOException {
-        return csvReader.lerLinhas(file);
+        return planilhaReader.ler(file);
     }
 
     public List<CnpjResult> processarLinhas(List<ImportRow> linhas, Consumer<ProgressoCnpj> onProgress)
