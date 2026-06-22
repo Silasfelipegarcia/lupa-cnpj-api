@@ -1,0 +1,148 @@
+package br.com.dadoscnpj.service;
+
+import br.com.dadoscnpj.client.CnpjClient;
+import br.com.dadoscnpj.csv.CnpjCsvWriter;
+import br.com.dadoscnpj.dto.CnpjResponse;
+import br.com.dadoscnpj.dto.CnpjResult;
+import br.com.dadoscnpj.dto.ImportJobResponse;
+import br.com.dadoscnpj.dto.ImportJobStatus;
+import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.model.ImportJob;
+import br.com.dadoscnpj.util.CnpjValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+
+@Service
+public class ImportJobQueueService {
+
+    private static final Logger log = LoggerFactory.getLogger(ImportJobQueueService.class);
+
+    private final ImportJobStore jobStore;
+    private final CnpjImportService cnpjImportService;
+    private final ExecutorService importJobExecutor;
+    private final ConcurrentLinkedQueue<String> fila = new ConcurrentLinkedQueue<>();
+
+    public ImportJobQueueService(ImportJobStore jobStore,
+                                 CnpjImportService cnpjImportService,
+                                 ExecutorService importJobExecutor) {
+        this.jobStore = jobStore;
+        this.cnpjImportService = cnpjImportService;
+        this.importJobExecutor = importJobExecutor;
+    }
+
+    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas) {
+        ImportJob job = new ImportJob(nomeArquivo, linhas);
+        jobStore.salvar(job);
+        fila.offer(job.getId());
+
+        log.info("Job {} enfileirado com {} linha(s). Posição na fila: {}",
+                job.getId(), linhas.size(), calcularPosicaoFila(job.getId()));
+
+        importJobExecutor.submit(this::processarProximoDaFila);
+
+        return toResponse(job);
+    }
+
+    public ImportJobResponse consultarStatus(String jobId) {
+        ImportJob job = jobStore.buscar(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Job não encontrado: " + jobId));
+        return toResponse(job);
+    }
+
+    public byte[] baixarResultado(String jobId) {
+        ImportJob job = jobStore.buscar(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Job não encontrado: " + jobId));
+
+        if (job.getStatus() != ImportJobStatus.CONCLUIDO) {
+            throw new IllegalStateException("Job ainda não foi concluído");
+        }
+        if (job.getResultado() == null) {
+            throw new IllegalStateException("Resultado do job não disponível");
+        }
+        return job.getResultado();
+    }
+
+    private void processarProximoDaFila() {
+        String jobId = fila.poll();
+        if (jobId == null) {
+            return;
+        }
+
+        ImportJob job = jobStore.buscar(jobId).orElse(null);
+        if (job == null) {
+            processarProximoDaFila();
+            return;
+        }
+
+        try {
+            job.setStatus(ImportJobStatus.PROCESSANDO);
+            job.setMensagem("Processamento iniciado");
+
+            log.info("Iniciando job {} ({} CNPJs)", job.getId(), job.getTotal());
+
+            List<CnpjResult> resultados = cnpjImportService.processarLinhas(job.getLinhas(), progresso -> {
+                job.adicionarResultado(progresso.resultado());
+                job.incrementarProcessados();
+                if ("SUCESSO".equals(progresso.statusConsulta())) {
+                    job.incrementarSucesso();
+                } else {
+                    job.incrementarErros();
+                }
+                job.setMensagem(String.format("Consultando %d de %d (%d%%)",
+                        job.getProcessados(), job.getTotal(), job.getPercentual()));
+            });
+
+            job.setResultado(cnpjImportService.gerarCsv(resultados));
+            job.setStatus(ImportJobStatus.CONCLUIDO);
+            job.setMensagem(String.format("Concluído: %d sucesso(s), %d erro(s)",
+                    job.getSucesso(), job.getErros()));
+            job.setConcluidoEm(Instant.now());
+
+            log.info("Job {} concluído com sucesso", job.getId());
+        } catch (Exception e) {
+            log.error("Falha no job {}: {}", job.getId(), e.getMessage(), e);
+            job.setStatus(ImportJobStatus.ERRO);
+            job.setMensagem("Erro no processamento: " + e.getMessage());
+            job.setConcluidoEm(Instant.now());
+        } finally {
+            if (!fila.isEmpty()) {
+                importJobExecutor.submit(this::processarProximoDaFila);
+            }
+        }
+    }
+
+    private int calcularPosicaoFila(String jobId) {
+        int posicao = 1;
+        for (String id : fila) {
+            if (id.equals(jobId)) {
+                return posicao;
+            }
+            posicao++;
+        }
+        return 0;
+    }
+
+    private ImportJobResponse toResponse(ImportJob job) {
+        ImportJobResponse response = new ImportJobResponse();
+        response.setJobId(job.getId());
+        response.setStatus(job.getStatus());
+        response.setArquivo(job.getArquivo());
+        response.setTotal(job.getTotal());
+        response.setProcessados(job.getProcessados());
+        response.setSucesso(job.getSucesso());
+        response.setErros(job.getErros());
+        response.setPercentual(job.getPercentual());
+        response.setPosicaoFila(job.getStatus() == ImportJobStatus.NA_FILA
+                ? calcularPosicaoFila(job.getId()) : 0);
+        response.setMensagem(job.getMensagem());
+        response.setResultados(job.getResultados());
+        return response;
+    }
+}

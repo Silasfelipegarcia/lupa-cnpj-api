@@ -1,0 +1,4 @@
+cnpj,razao_social,nome_fantasia,situacao_cadastral,telefone_1,telefone_2,email,logradouro,numero,complemento,bairro,cidade,uf,cep,cnae_principal,status_consulta,erro
+19131243000197,OPEN KNOWLEDGE BRASIL,REDE PELO CONHECIMENTO LIVRE,Ativa,(11) 23851939,,torres.contab@gmail.com,AVENIDA PAULISTA 37,37,ANDAR 4,BELA VISTA,São Paulo,SP,01311-902,Atividades de associações de defesa de direitos sociais,SUCESSO,
+00000000000191,BANCO DO BRASIL SA,,Ativa,,,,SAUN QUADRA 5 BLOCO B TORRE I,SN,ANDAR 1 A 16,ASA NORTE,Brasília,DF,70040-912,Bancos múltiplos com carteira comercial,SUCESSO,
+07526557000100,PETROLEO BRASILEIRO S A PETROBRAS,PETROBRAS,Ativa,(21) 3224-1510,,,AVENIDA REPUBLICA DO CHILE,65,,CENTRO,Rio de Janeiro,RJ,20031-912,Extração de petróleo e gás natural,SUCESSO,
