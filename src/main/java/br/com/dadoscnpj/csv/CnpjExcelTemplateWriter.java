@@ -42,7 +42,8 @@ public class CnpjExcelTemplateWriter {
             Row instrucoes = sheet.createRow(6);
             Cell instrucaoCell = instrucoes.createCell(0);
             instrucaoCell.setCellValue(
-                    "Preencha pelo menos uma coluna por linha (cnpj OU razao_social). "
+                    "Preencha pelo menos uma coluna por linha. Se o CNPJ estiver errado, "
+                            + "tentamos buscar pela razão social (e vice-versa). "
                             + "Apague as linhas de exemplo antes de importar, se desejar.");
             instrucaoCell.setCellStyle(hintStyle);
 

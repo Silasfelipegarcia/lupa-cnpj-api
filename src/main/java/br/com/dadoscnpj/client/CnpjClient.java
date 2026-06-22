@@ -2,6 +2,7 @@ package br.com.dadoscnpj.client;
 
 import br.com.dadoscnpj.config.CnpjApiProperties;
 import br.com.dadoscnpj.dto.CnpjResponse;
+import br.com.dadoscnpj.service.CnpjConsultaPort;
 import br.com.dadoscnpj.util.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +16,7 @@ import org.springframework.web.client.RestClient;
 import java.time.Duration;
 
 @Component
-public class CnpjClient {
+public class CnpjClient implements CnpjConsultaPort {
 
     private static final Logger log = LoggerFactory.getLogger(CnpjClient.class);
 

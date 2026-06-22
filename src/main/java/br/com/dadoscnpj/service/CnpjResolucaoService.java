@@ -1,7 +1,6 @@
 package br.com.dadoscnpj.service;
 
 import br.com.dadoscnpj.client.CnpjPesquisaClient;
-import br.com.dadoscnpj.dto.ImportRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -9,7 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class CnpjResolucaoService {
+public class CnpjResolucaoService implements CnpjResolucaoPort {
 
     private static final Logger log = LoggerFactory.getLogger(CnpjResolucaoService.class);
 
@@ -19,26 +18,23 @@ public class CnpjResolucaoService {
         this.pesquisaClient = pesquisaClient;
     }
 
-    public ResolucaoCnpj resolver(ImportRow linha) throws InterruptedException {
-        if (linha.temCnpj()) {
-            return new ResolucaoCnpj(linha.getCnpj(), null);
-        }
-
-        List<String> cnpjs = pesquisaClient.buscarPorRazaoSocial(linha.getRazaoSocial());
+    public ResolucaoCnpj resolverPorRazaoSocial(String razaoSocial) throws InterruptedException {
+        List<String> cnpjs = pesquisaClient.buscarPorRazaoSocial(razaoSocial);
         if (cnpjs.isEmpty()) {
             throw new CnpjPesquisaClient.CnpjPesquisaException(
-                    "Nenhum CNPJ encontrado para a razão social: " + linha.getRazaoSocial());
+                    "Nenhum CNPJ encontrado para a razão social: " + razaoSocial);
         }
 
         String cnpjEscolhido = cnpjs.getFirst();
         String aviso = null;
         if (cnpjs.size() > 1) {
             aviso = cnpjs.size() + " empresas encontradas; utilizado o CNPJ " + cnpjEscolhido;
-            log.warn("Múltiplos CNPJs para '{}': {}", linha.getRazaoSocial(), cnpjs);
+            log.warn("Múltiplos CNPJs para '{}': {}", razaoSocial, cnpjs);
         }
 
         return new ResolucaoCnpj(cnpjEscolhido, aviso);
     }
 
-    public record ResolucaoCnpj(String cnpj, String aviso) {}
+    public record ResolucaoCnpj(String cnpj, String aviso) {
+    }
 }

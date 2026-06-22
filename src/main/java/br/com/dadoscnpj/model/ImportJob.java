@@ -14,6 +14,7 @@ public class ImportJob {
 
     private final String id;
     private final String arquivo;
+    private final String clientIp;
     private final List<ImportRow> linhas;
     private final Instant criadoEm;
     private final List<CnpjResult> resultados = Collections.synchronizedList(new ArrayList<>());
@@ -26,9 +27,10 @@ public class ImportJob {
     private byte[] resultado;
     private Instant concluidoEm;
 
-    public ImportJob(String arquivo, List<ImportRow> linhas) {
+    public ImportJob(String arquivo, List<ImportRow> linhas, String clientIp) {
         this.id = UUID.randomUUID().toString();
         this.arquivo = arquivo;
+        this.clientIp = clientIp != null ? clientIp : "desconhecido";
         this.linhas = new ArrayList<>(linhas);
         this.criadoEm = Instant.now();
     }
@@ -39,6 +41,10 @@ public class ImportJob {
 
     public String getArquivo() {
         return arquivo;
+    }
+
+    public String getClientIp() {
+        return clientIp;
     }
 
     public List<ImportRow> getLinhas() {

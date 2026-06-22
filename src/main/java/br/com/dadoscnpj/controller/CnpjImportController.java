@@ -3,6 +3,7 @@ package br.com.dadoscnpj.controller;
 import br.com.dadoscnpj.csv.CnpjExcelTemplateWriter;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportRow;
+import br.com.dadoscnpj.security.RateLimitFilter;
 import br.com.dadoscnpj.service.CnpjImportService;
 import br.com.dadoscnpj.service.ImportJobQueueService;
 import org.slf4j.Logger;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -30,6 +33,7 @@ import java.util.List;
 public class CnpjImportController {
 
     private static final Logger log = LoggerFactory.getLogger(CnpjImportController.class);
+    private static final long MAX_FILE_BYTES = 5 * 1024 * 1024;
 
     private final CnpjImportService cnpjImportService;
     private final ImportJobQueueService jobQueueService;
@@ -44,16 +48,27 @@ public class CnpjImportController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ImportJobResponse> importar(@RequestParam("file") MultipartFile file) throws Exception {
+    public ResponseEntity<ImportJobResponse> importar(@RequestParam("file") MultipartFile file,
+                                                      HttpServletRequest request) throws Exception {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
+        if (file.getSize() > MAX_FILE_BYTES) {
+            throw new IllegalArgumentException("O arquivo excede o limite de 5 MB.");
+        }
+
+        String nomeArquivo = file.getOriginalFilename();
+        if (!extensaoPermitida(nomeArquivo)) {
+            throw new IllegalArgumentException("Formato não suportado. Use CSV ou Excel (.xlsx).");
+        }
+
         log.info("Recebido arquivo para importação: {} ({} bytes)",
-                file.getOriginalFilename(), file.getSize());
+                nomeArquivo, file.getSize());
 
         List<ImportRow> linhas = cnpjImportService.lerLinhasDoArquivo(file);
-        ImportJobResponse job = jobQueueService.enfileirar(file.getOriginalFilename(), linhas);
+        String clientIp = (String) request.getAttribute(RateLimitFilter.CLIENT_IP_ATTRIBUTE);
+        ImportJobResponse job = jobQueueService.enfileirar(nomeArquivo, linhas, clientIp);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(job);
     }
@@ -85,5 +100,13 @@ public class CnpjImportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nomeArquivo + "\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(new ByteArrayResource(csvResultado));
+    }
+
+    private boolean extensaoPermitida(String nomeArquivo) {
+        if (nomeArquivo == null) {
+            return false;
+        }
+        String nome = nomeArquivo.toLowerCase();
+        return nome.endsWith(".csv") || nome.endsWith(".xlsx") || nome.endsWith(".xls");
     }
 }

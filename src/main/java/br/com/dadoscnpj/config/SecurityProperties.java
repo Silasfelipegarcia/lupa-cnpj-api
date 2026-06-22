@@ -1,0 +1,89 @@
+package br.com.dadoscnpj.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "app.security")
+public class SecurityProperties {
+
+    private int importPerHour = 5;
+    private int statusPerMinute = 30;
+    private int downloadPerHour = 10;
+    private int templatePerHour = 10;
+    private int maxRowsPerFile = 100;
+    private int maxQueueSize = 10;
+    private int maxJobsInMemory = 50;
+    private int maxActiveJobsPerIp = 1;
+    private int jobTtlHours = 24;
+
+    public int getImportPerHour() {
+        return importPerHour;
+    }
+
+    public void setImportPerHour(int importPerHour) {
+        this.importPerHour = importPerHour;
+    }
+
+    public int getStatusPerMinute() {
+        return statusPerMinute;
+    }
+
+    public void setStatusPerMinute(int statusPerMinute) {
+        this.statusPerMinute = statusPerMinute;
+    }
+
+    public int getDownloadPerHour() {
+        return downloadPerHour;
+    }
+
+    public void setDownloadPerHour(int downloadPerHour) {
+        this.downloadPerHour = downloadPerHour;
+    }
+
+    public int getTemplatePerHour() {
+        return templatePerHour;
+    }
+
+    public void setTemplatePerHour(int templatePerHour) {
+        this.templatePerHour = templatePerHour;
+    }
+
+    public int getMaxRowsPerFile() {
+        return maxRowsPerFile;
+    }
+
+    public void setMaxRowsPerFile(int maxRowsPerFile) {
+        this.maxRowsPerFile = maxRowsPerFile;
+    }
+
+    public int getMaxQueueSize() {
+        return maxQueueSize;
+    }
+
+    public void setMaxQueueSize(int maxQueueSize) {
+        this.maxQueueSize = maxQueueSize;
+    }
+
+    public int getMaxJobsInMemory() {
+        return maxJobsInMemory;
+    }
+
+    public void setMaxJobsInMemory(int maxJobsInMemory) {
+        this.maxJobsInMemory = maxJobsInMemory;
+    }
+
+    public int getMaxActiveJobsPerIp() {
+        return maxActiveJobsPerIp;
+    }
+
+    public void setMaxActiveJobsPerIp(int maxActiveJobsPerIp) {
+        this.maxActiveJobsPerIp = maxActiveJobsPerIp;
+    }
+
+    public int getJobTtlHours() {
+        return jobTtlHours;
+    }
+
+    public void setJobTtlHours(int jobTtlHours) {
+        this.jobTtlHours = jobTtlHours;
+    }
+}

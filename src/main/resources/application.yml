@@ -1,8 +1,25 @@
 server:
   port: ${PORT:8080}
+  tomcat:
+    max-connections: 50
+    accept-count: 10
+    threads:
+      max: 20
+      min-spare: 2
+  connection-timeout: 10s
 
 app:
   cors-allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+  security:
+    import-per-hour: 5
+    status-per-minute: 30
+    download-per-hour: 10
+    template-per-hour: 10
+    max-rows-per-file: 100
+    max-queue-size: 10
+    max-jobs-in-memory: 50
+    max-active-jobs-per-ip: 1
+    job-ttl-hours: 24
 
 management:
   endpoints:
@@ -13,8 +30,8 @@ management:
 spring:
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 cnpj:
   api:

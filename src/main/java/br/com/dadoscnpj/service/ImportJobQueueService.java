@@ -1,20 +1,17 @@
 package br.com.dadoscnpj.service;
 
-import br.com.dadoscnpj.client.CnpjClient;
+import br.com.dadoscnpj.config.SecurityProperties;
 import br.com.dadoscnpj.csv.CnpjCsvWriter;
-import br.com.dadoscnpj.dto.CnpjResponse;
 import br.com.dadoscnpj.dto.CnpjResult;
 import br.com.dadoscnpj.dto.ImportJobResponse;
 import br.com.dadoscnpj.dto.ImportJobStatus;
 import br.com.dadoscnpj.dto.ImportRow;
 import br.com.dadoscnpj.model.ImportJob;
-import br.com.dadoscnpj.util.CnpjValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -27,18 +24,23 @@ public class ImportJobQueueService {
     private final ImportJobStore jobStore;
     private final CnpjImportService cnpjImportService;
     private final ExecutorService importJobExecutor;
+    private final SecurityProperties securityProperties;
     private final ConcurrentLinkedQueue<String> fila = new ConcurrentLinkedQueue<>();
 
     public ImportJobQueueService(ImportJobStore jobStore,
                                  CnpjImportService cnpjImportService,
-                                 ExecutorService importJobExecutor) {
+                                 ExecutorService importJobExecutor,
+                                 SecurityProperties securityProperties) {
         this.jobStore = jobStore;
         this.cnpjImportService = cnpjImportService;
         this.importJobExecutor = importJobExecutor;
+        this.securityProperties = securityProperties;
     }
 
-    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas) {
-        ImportJob job = new ImportJob(nomeArquivo, linhas);
+    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, String clientIp) {
+        validarLimites(nomeArquivo, linhas, clientIp);
+
+        ImportJob job = new ImportJob(nomeArquivo, linhas, clientIp);
         jobStore.salvar(job);
         fila.offer(job.getId());
 
@@ -48,6 +50,33 @@ public class ImportJobQueueService {
         importJobExecutor.submit(this::processarProximoDaFila);
 
         return toResponse(job);
+    }
+
+    private void validarLimites(String nomeArquivo, List<ImportRow> linhas, String clientIp) {
+        if (linhas.isEmpty()) {
+            throw new IllegalArgumentException("O arquivo não contém linhas válidas para importação.");
+        }
+
+        if (linhas.size() > securityProperties.getMaxRowsPerFile()) {
+            throw new IllegalArgumentException(String.format(
+                    "O arquivo excede o limite de %d linhas. Divida em arquivos menores.",
+                    securityProperties.getMaxRowsPerFile()));
+        }
+
+        if (fila.size() >= securityProperties.getMaxQueueSize()) {
+            throw new IllegalStateException(
+                    "A fila de processamento está cheia. Tente novamente em alguns minutos.");
+        }
+
+        if (jobStore.total() >= securityProperties.getMaxJobsInMemory()) {
+            throw new IllegalStateException(
+                    "O servidor está com muitas consultas em andamento. Tente novamente mais tarde.");
+        }
+
+        if (jobStore.contarAtivosPorIp(clientIp) >= securityProperties.getMaxActiveJobsPerIp()) {
+            throw new IllegalStateException(
+                    "Você já possui uma importação em andamento. Aguarde a conclusão antes de enviar outra.");
+        }
     }
 
     public ImportJobResponse consultarStatus(String jobId) {
