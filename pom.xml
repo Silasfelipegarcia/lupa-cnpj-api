@@ -11,10 +11,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>br.com.dadoscnpj</groupId>
-    <artifactId>cnpj-import-service</artifactId>
+    <groupId>br.com.lupainsights</groupId>
+    <artifactId>lupa-insights-api</artifactId>
     <version>1.0.0</version>
-    <name>cnpj-import-service</name>
+    <name>lupa-insights-api</name>
     <description>Serviço de importação e enriquecimento de CNPJs</description>
 
     <properties>
@@ -91,6 +91,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>br.com.lupainsights.LupaInsightsApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

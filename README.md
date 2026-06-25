@@ -1,8 +1,8 @@
-# LupaCNPJ — API
+# Lupa Insights — API
 
 API Spring Boot para enriquecer listas de CNPJs consultando a [API pública CNPJ.ws](https://publica.cnpj.ws).
 
-Frontend em [lupa-cnpj](https://github.com/Silasfelipegarcia/lupa-cnpj) · Documentação completa em [docs/DOCUMENTACAO.md](../docs/DOCUMENTACAO.md).
+Frontend em [lupa-insights](https://github.com/Silasfelipegarcia/lupa-insights) · Documentação completa em [docs/DOCUMENTACAO.md](../docs/DOCUMENTACAO.md).
 
 **Produção:** https://lupa-cnpj-api-production.up.railway.app
 
@@ -24,7 +24,7 @@ export DB_PASSWORD=sua_senha   # se necessário
 mvn spring-boot:run
 ```
 
-Profile `local` (padrão). Flyway cria o banco `lupacnpj` e as tabelas.
+Profile `local` (padrão). Flyway cria o banco `lupainsights` e as tabelas.
 
 API em `http://localhost:8080`.
 
@@ -34,21 +34,35 @@ API em `http://localhost:8080`.
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `DB_URL` | `jdbc:mysql://127.0.0.1:3306/lupacnpj?...` | URL JDBC |
+| `DB_URL` | `jdbc:mysql://127.0.0.1:3306/lupainsights?...` | URL JDBC |
 | `DB_USERNAME` | `root` | Usuário |
 | `DB_PASSWORD` | vazio | Senha |
 | `FLYWAY_ENABLED` | `true` | Migrações |
 | `JWT_SECRET` | dev | Segredo HS256 |
 | `ALLOWED_ORIGINS` | localhost + vercel | CORS |
+| `MERCADOPAGO_PUBLIC_KEY` | — | Public Key (TEST local / APP_USR produção) |
+| `MERCADOPAGO_ACCESS_TOKEN` | — | Access Token (TEST local / APP_USR produção) |
+| `FRONTEND_URL` | `http://localhost:4200` | Redirects do checkout |
+| `API_PUBLIC_URL` | `http://localhost:8080` | Webhook MP |
+
+Veja `.env.example` — copie para `.env` e use credenciais de **teste** do painel Mercado Pago.
+
+Para o **Railway**, use `railway.env.example` → `railway.env` (gitignored) como referência ao colar variáveis no painel.
 
 ### Produção (`profile production`)
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
 | `JWT_SECRET` | **Sim** | Segredo forte (32+ caracteres) |
-| `ALLOWED_ORIGINS` | Recomendado | `https://lupa-cnpj.vercel.app,http://localhost:4200` |
+| `ALLOWED_ORIGINS` | Recomendado | `https://lupa-insights.vercel.app,http://localhost:4200` |
 | `PORT` | Auto | Railway define automaticamente |
 | `CNPJ_WS_TOKEN` | Não | Token API comercial |
+| `MERCADOPAGO_PUBLIC_KEY` | Sim (pagamentos) | `TEST-...` (teste) ou `APP_USR-...` (produção) |
+| `MERCADOPAGO_ACCESS_TOKEN` | Sim (pagamentos) | `TEST-...` (teste) ou `APP_USR-...` (produção) |
+| `FRONTEND_URL` | Sim (pagamentos) | URL do frontend |
+| `API_PUBLIC_URL` | Sim (pagamentos) | URL pública da API (webhook) |
+
+Webhook no painel MP: `{API_PUBLIC_URL}/payments/mercadopago/webhook` — ver [MERCADOPAGO_SETUP.md](MERCADOPAGO_SETUP.md).
 
 **Banco — opção 1 (JDBC):**
 
@@ -70,7 +84,7 @@ Vincule o MySQL ao serviço da API. Variáveis injetadas automaticamente:
 
 ## Deploy no Railway
 
-1. Projeto em [railway.app](https://railway.app) → repo `lupa-cnpj-api`
+1. Projeto em [railway.app](https://railway.app) → repo `lupa-insights-api`
 2. **Add MySQL** e vincule à API
 3. Configure `JWT_SECRET` e `ALLOWED_ORIGINS`
 4. Dockerfile ativa `production` automaticamente

@@ -5,4 +5,5 @@ target/
 *.class
 *.log
 .env
+railway.env
 .DS_Store

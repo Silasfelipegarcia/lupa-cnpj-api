@@ -10,7 +10,7 @@ server:
 
 spring:
   application:
-    name: lupa-cnpj-api
+    name: lupa-insights-api
   profiles:
     active: local
   servlet:
@@ -38,7 +38,7 @@ spring:
     baseline-on-migrate: true
 
 app:
-  cors-allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200,https://lupa-cnpj.vercel.app,https://*.vercel.app}
+  cors-allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200,https://lupa-insights.vercel.app,https://*.vercel.app}
   jwt:
     secret: ${JWT_SECRET:dev-secret-change-in-production-min-32-chars}
     expiration-hours: 24
@@ -84,5 +84,5 @@ mercadopago:
 
 logging:
   level:
-    br.com.dadoscnpj: INFO
+    br.com.lupainsights: INFO
     AUDIT: INFO

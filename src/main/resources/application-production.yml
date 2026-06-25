@@ -9,7 +9,7 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
-  cors-allowed-origins: ${ALLOWED_ORIGINS:https://lupa-cnpj.vercel.app,http://localhost:4200,https://*.vercel.app}
+  cors-allowed-origins: ${ALLOWED_ORIGINS:https://lupa-insights.vercel.app,http://localhost:4200,https://*.vercel.app}
 
 cnpj:
   api:
@@ -19,7 +19,7 @@ cnpj:
 mercadopago:
   access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
   public-key: ${MERCADOPAGO_PUBLIC_KEY:}
-  frontend-url: ${FRONTEND_URL:https://lupa-cnpj.vercel.app}
+  frontend-url: ${FRONTEND_URL:https://lupa-insights.vercel.app}
   api-public-url: ${API_PUBLIC_URL:https://lupa-cnpj-api-production.up.railway.app}
   premium-price-cents: 4990
   pro-plus-price-cents: 9990
