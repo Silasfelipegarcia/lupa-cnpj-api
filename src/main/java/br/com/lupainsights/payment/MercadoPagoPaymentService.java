@@ -40,6 +40,7 @@ public class MercadoPagoPaymentService {
     private final PaymentOrderRepository paymentOrderRepository;
     private final UserRepository userRepository;
     private final PlanLimitsService planLimitsService;
+    private final MercadoPagoCustomerService customerService;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
@@ -47,11 +48,13 @@ public class MercadoPagoPaymentService {
                                      PaymentOrderRepository paymentOrderRepository,
                                      UserRepository userRepository,
                                      PlanLimitsService planLimitsService,
+                                     MercadoPagoCustomerService customerService,
                                      ObjectMapper objectMapper) {
         this.properties = properties;
         this.paymentOrderRepository = paymentOrderRepository;
         this.userRepository = userRepository;
         this.planLimitsService = planLimitsService;
+        this.customerService = customerService;
         this.objectMapper = objectMapper;
         this.restClient = RestClient.builder()
                 .baseUrl(properties.getApiBaseUrl())
@@ -156,21 +159,25 @@ public class MercadoPagoPaymentService {
             throw new IllegalArgumentException("Token do cartão é obrigatório");
         }
 
-        UserEntity user = obterOuCriarCustomer(userId);
+        UserEntity user = customerService.obterOuCriar(userId);
         Map<String, Object> body = Map.of("token", token);
 
-        JsonNode response = restClient.post()
-                .uri("/v1/customers/{id}/cards", user.getMpCustomerId())
-                .header("Authorization", "Bearer " + properties.getAccessToken())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
+        try {
+            JsonNode response = restClient.post()
+                    .uri("/v1/customers/{id}/cards", user.getMpCustomerId())
+                    .header("Authorization", "Bearer " + properties.getAccessToken())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
 
-        if (response == null || !response.has("id")) {
-            throw new IllegalStateException("Não foi possível salvar o cartão. Verifique os dados e tente novamente.");
+            if (response == null || !response.has("id")) {
+                throw new IllegalStateException("Não foi possível salvar o cartão. Verifique os dados e tente novamente.");
+            }
+            return mapearCartao(response);
+        } catch (RestClientResponseException e) {
+            throw customerService.traduzirErro("Não foi possível salvar o cartão", e);
         }
-        return mapearCartao(response);
     }
 
     @Transactional
@@ -297,31 +304,6 @@ public class MercadoPagoPaymentService {
             throw new IllegalStateException("Não foi possível validar o cartão. Verifique o CVV.");
         }
         return tokenResponse.get("id").asText();
-    }
-
-    private UserEntity obterOuCriarCustomer(UUID userId) {
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
-
-        if (user.getMpCustomerId() != null && !user.getMpCustomerId().isBlank()) {
-            return user;
-        }
-
-        Map<String, Object> body = Map.of("email", user.getEmail());
-        JsonNode response = restClient.post()
-                .uri("/v1/customers")
-                .header("Authorization", "Bearer " + properties.getAccessToken())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
-
-        if (response == null || !response.has("id")) {
-            throw new IllegalStateException("Falha ao criar cliente no Mercado Pago");
-        }
-
-        user.setMpCustomerId(response.get("id").asText());
-        return userRepository.save(user);
     }
 
     private SavedCardResponse mapearCartao(JsonNode node) {
