@@ -27,6 +27,8 @@ https://lupa-cnpj-api-production.up.railway.app/payments/mercadopago/webhook
 
 Evento: **payment**
 
+Configure `MERCADOPAGO_WEBHOOK_SECRET` no Railway (secret do painel MP → Webhooks).
+
 ### Validar
 
 ```bash

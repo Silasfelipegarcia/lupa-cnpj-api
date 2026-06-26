@@ -21,5 +21,6 @@ mercadopago:
   public-key: ${MERCADOPAGO_PUBLIC_KEY:}
   frontend-url: ${FRONTEND_URL:https://lupa-insights.vercel.app}
   api-public-url: ${API_PUBLIC_URL:https://lupa-cnpj-api-production.up.railway.app}
-  premium-price-cents: 4990
-  pro-plus-price-cents: 9990
+  premium-price-cents: ${MERCADOPAGO_PREMIUM_PRICE_CENTS:4990}
+  pro-plus-price-cents: ${MERCADOPAGO_PRO_PLUS_PRICE_CENTS:9990}
+  webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}

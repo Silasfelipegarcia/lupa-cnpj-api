@@ -62,7 +62,7 @@ Para o **Railway**, use `railway.env.example` → `railway.env` (gitignored) com
 | `FRONTEND_URL` | Sim (pagamentos) | URL do frontend |
 | `API_PUBLIC_URL` | Sim (pagamentos) | URL pública da API (webhook) |
 
-Webhook no painel MP: `{API_PUBLIC_URL}/payments/mercadopago/webhook` — ver [MERCADOPAGO_SETUP.md](MERCADOPAGO_SETUP.md).
+Webhook no painel MP: `{API_PUBLIC_URL}/payments/mercadopago/webhook` — configure também `MERCADOPAGO_WEBHOOK_SECRET` no Railway. Ver [CONFIGURACAO-PRODUCAO.md](../docs/CONFIGURACAO-PRODUCAO.md).
 
 **Banco — opção 1 (JDBC):**
 

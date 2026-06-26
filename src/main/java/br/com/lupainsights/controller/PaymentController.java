@@ -17,6 +17,7 @@ import br.com.lupainsights.payment.IdempotencyService;
 import br.com.lupainsights.payment.MercadoPagoPaymentService;
 import br.com.lupainsights.payment.MercadoPagoWebhookVerifier;
 import br.com.lupainsights.security.SecurityUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -151,12 +152,14 @@ public class PaymentController {
                                             @RequestParam(value = "id", required = false) String id,
                                             @RequestParam(value = "type", required = false) String type,
                                             @RequestParam(value = "data.id", required = false) String dataId,
+                                            @RequestBody(required = false) JsonNode body,
                                             HttpServletRequest request) {
-        String paymentId = id != null ? id : dataId;
+        String paymentId = resolverIdWebhook(id, dataId, body);
+        String evento = topic != null ? topic : (type != null ? type : extrairTipoWebhook(body));
         if (!webhookVerifier.verificar(request, paymentId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        processar(topic != null ? topic : type, paymentId);
+        processar(evento, paymentId);
         return ResponseEntity.ok().build();
     }
 
@@ -175,8 +178,33 @@ public class PaymentController {
         if (id == null || id.isBlank()) {
             return;
         }
-        if ("payment".equalsIgnoreCase(topic) || "merchant_order".equalsIgnoreCase(topic)) {
+        if (topic == null || topic.isBlank()
+                || "payment".equalsIgnoreCase(topic)
+                || "merchant_order".equalsIgnoreCase(topic)) {
             paymentService.processarNotificacao(id);
         }
+    }
+
+    private String resolverIdWebhook(String id, String dataId, JsonNode body) {
+        if (id != null && !id.isBlank()) {
+            return id;
+        }
+        if (dataId != null && !dataId.isBlank()) {
+            return dataId;
+        }
+        if (body != null && body.has("data") && body.get("data").has("id")) {
+            return body.get("data").get("id").asText(null);
+        }
+        return null;
+    }
+
+    private String extrairTipoWebhook(JsonNode body) {
+        if (body != null && body.has("type")) {
+            return body.get("type").asText(null);
+        }
+        if (body != null && body.has("action")) {
+            return body.get("action").asText(null);
+        }
+        return null;
     }
 }
