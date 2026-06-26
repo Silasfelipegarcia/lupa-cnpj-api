@@ -7,7 +7,7 @@ public class MercadoPagoProperties {
 
     private String accessToken = "";
     private String publicKey = "";
-    private String frontendUrl = "https://lupa-insights.vercel.app";
+    private String frontendUrl = "https://www.lupacnpjs.com.br";
     private String apiPublicUrl = "https://lupa-cnpj-api-production.up.railway.app";
     private String apiBaseUrl = "https://api.mercadopago.com";
     private int premiumPriceCents = 4990;

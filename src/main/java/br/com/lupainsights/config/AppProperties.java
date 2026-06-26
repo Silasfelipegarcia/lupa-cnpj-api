@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
-    private String corsAllowedOrigins = "http://localhost:4200,https://lupa-insights.vercel.app,https://*.vercel.app";
+    private String corsAllowedOrigins = "http://localhost:4200,https://www.lupacnpjs.com.br,https://lupacnpjs.com.br,https://lupa-cnpj.vercel.app,https://*.vercel.app";
 
     public String getCorsAllowedOrigins() {
         return corsAllowedOrigins;
