@@ -14,8 +14,16 @@ public class IpRateLimiter {
     }
 
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    private final RedisRateLimiter redisRateLimiter;
+
+    public IpRateLimiter(RedisRateLimiter redisRateLimiter) {
+        this.redisRateLimiter = redisRateLimiter;
+    }
 
     public boolean tryAcquire(String key, int maxRequests, long windowMs) {
+        if (redisRateLimiter.isEnabled()) {
+            return redisRateLimiter.tryAcquire(key, maxRequests, windowMs);
+        }
         long now = System.currentTimeMillis();
         Window window = windows.compute(key, (k, current) -> {
             if (current == null || now - current.startMs >= windowMs) {
@@ -27,6 +35,9 @@ public class IpRateLimiter {
     }
 
     public int obterUso(String key, long windowMs) {
+        if (redisRateLimiter.isEnabled()) {
+            return 0;
+        }
         long now = System.currentTimeMillis();
         Window window = windows.get(key);
         if (window == null || now - window.startMs >= windowMs) {
@@ -36,6 +47,9 @@ public class IpRateLimiter {
     }
 
     public boolean registrarUsoSeAbaixoDoLimite(String key, int maxRequests, long windowMs) {
+        if (redisRateLimiter.isEnabled()) {
+            return redisRateLimiter.tryAcquire(key, maxRequests, windowMs);
+        }
         long now = System.currentTimeMillis();
         Window[] resultado = new Window[1];
         boolean[] permitido = new boolean[1];

@@ -22,9 +22,11 @@ import java.util.concurrent.TimeUnit;
 public class AuditLoggingFilter extends OncePerRequestFilter {
 
     private final AuditLogService auditLogService;
+    private final RequestIpResolver requestIpResolver;
 
-    public AuditLoggingFilter(AuditLogService auditLogService) {
+    public AuditLoggingFilter(AuditLogService auditLogService, RequestIpResolver requestIpResolver) {
         this.auditLogService = auditLogService;
+        this.requestIpResolver = requestIpResolver;
     }
 
     @Override
@@ -52,7 +54,7 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         int status = response.getStatus();
         int durationMs = (int) TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - inicio);
-        String ip = RequestIpResolver.resolver(request);
+        String ip = requestIpResolver.resolver(request);
         UUID userId = extrairUserId();
 
         AuditAction action = resolverAcao(method, path, status);

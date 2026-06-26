@@ -16,12 +16,18 @@ import java.io.IOException;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RequestContextFilter extends OncePerRequestFilter {
 
+    private final RequestIpResolver requestIpResolver;
+
+    public RequestContextFilter(RequestIpResolver requestIpResolver) {
+        this.requestIpResolver = requestIpResolver;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String requestId = RequestContext.resolverOuGerarRequestId(request);
-        String clientIp = RequestIpResolver.resolver(request);
+        String clientIp = requestIpResolver.resolver(request);
 
         request.setAttribute(RequestContext.REQUEST_ATTRIBUTE, requestId);
         request.setAttribute("clientIp", clientIp);

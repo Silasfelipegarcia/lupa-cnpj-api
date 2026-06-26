@@ -1,8 +1,15 @@
 package br.com.lupainsights.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class AnalyticsEventRequest {
 
+    @NotBlank
+    @Size(max = 64)
     private String event;
+
+    @Size(max = 2048)
     private String properties;
 
     public String getEvent() {

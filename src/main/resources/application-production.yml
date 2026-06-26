@@ -9,7 +9,14 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
-  cors-allowed-origins: ${ALLOWED_ORIGINS:https://www.lupacnpjs.com.br,https://lupacnpjs.com.br,https://lupa-cnpj.vercel.app,http://localhost:4200,https://*.vercel.app}
+  cors-allowed-origins: ${ALLOWED_ORIGINS:https://www.lupacnpjs.com.br,https://lupacnpjs.com.br,https://lupa-cnpj.vercel.app,http://localhost:4200}
+  security:
+    trust-proxy: true
+    historico-per-minute: 30
+    read-per-minute: 60
+    consulta-per-minute: 30
+    admin-per-minute: 30
+    redis-url: ${REDIS_URL:}
 
 cnpj:
   api:

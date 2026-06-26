@@ -17,9 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class CnpjPreviewController {
 
     private final GuestCnpjPreviewService guestCnpjPreviewService;
+    private final RequestIpResolver requestIpResolver;
 
-    public CnpjPreviewController(GuestCnpjPreviewService guestCnpjPreviewService) {
+    public CnpjPreviewController(GuestCnpjPreviewService guestCnpjPreviewService,
+                                 RequestIpResolver requestIpResolver) {
         this.guestCnpjPreviewService = guestCnpjPreviewService;
+        this.requestIpResolver = requestIpResolver;
     }
 
     @GetMapping("/quota")
@@ -40,6 +43,6 @@ public class CnpjPreviewController {
         if (atributo instanceof String ip && !ip.isBlank()) {
             return ip;
         }
-        return RequestIpResolver.resolver(request);
+        return requestIpResolver.resolver(request);
     }
 }

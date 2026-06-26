@@ -36,7 +36,7 @@ public class MercadoPagoProductionValidator {
             log.error("Produção: MERCADOPAGO_ACCESS_TOKEN usa prefixo TEST-. Use credenciais APP_USR- no Railway.");
         }
         if (properties.getWebhookSecret() == null || properties.getWebhookSecret().isBlank()) {
-            log.warn("Produção: MERCADOPAGO_WEBHOOK_SECRET ausente — webhooks do MP serão aceitos sem validar assinatura.");
+            log.error("Produção: MERCADOPAGO_WEBHOOK_SECRET ausente — webhooks serão rejeitados (fail-closed).");
         }
         String apiUrl = properties.getApiPublicUrl();
         if (apiUrl.contains("localhost") || apiUrl.contains("127.0.0.1")) {

@@ -29,13 +29,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final SecurityProperties securityProperties;
     private final IpRateLimiter rateLimiter;
     private final ObjectMapper objectMapper;
+    private final RequestIpResolver requestIpResolver;
 
     public RateLimitFilter(SecurityProperties securityProperties,
                            IpRateLimiter rateLimiter,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           RequestIpResolver requestIpResolver) {
         this.securityProperties = securityProperties;
         this.rateLimiter = rateLimiter;
         this.objectMapper = objectMapper;
+        this.requestIpResolver = requestIpResolver;
     }
 
     @Override
@@ -70,12 +73,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    static String resolverClientIp(HttpServletRequest request) {
+    String resolverClientIp(HttpServletRequest request) {
         Object atributo = request.getAttribute(CLIENT_IP_ATTRIBUTE);
         if (atributo instanceof String ip && !ip.isBlank()) {
             return ip;
         }
-        return RequestIpResolver.resolver(request);
+        return requestIpResolver.resolver(request);
     }
 
     private RateLimitRule resolverRegraIp(String path, String method) {
@@ -108,6 +111,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if (path.startsWith("/analytics")) {
             return new RateLimitRule(securityProperties.getAnalyticsPerMinute(), MINUTE_MS, 60, "analytics");
+        }
+        if ("GET".equalsIgnoreCase(method) && (path.equals("/cnpj/import/historico")
+                || path.matches("/cnpj/import/historico/[^/]+")
+                || path.equals("/cnpj/import/listas-salvas")
+                || path.equals("/cnpj/import/ativo"))) {
+            return new RateLimitRule(securityProperties.getHistoricoPerMinute(), MINUTE_MS, 60, "historico");
+        }
+        if ("GET".equalsIgnoreCase(method) && path.equals("/auth/me")) {
+            return new RateLimitRule(securityProperties.getReadPerMinute(), MINUTE_MS, 60, "me");
+        }
+        if ("GET".equalsIgnoreCase(method) && path.equals("/cnpj/config")) {
+            return new RateLimitRule(securityProperties.getReadPerMinute(), MINUTE_MS, 60, "config");
+        }
+        if ("GET".equalsIgnoreCase(method) && path.startsWith("/cnpj/consulta")) {
+            return new RateLimitRule(securityProperties.getConsultaPerMinute(), MINUTE_MS, 60, "consulta");
+        }
+        if (path.startsWith("/admin")) {
+            return new RateLimitRule(securityProperties.getAdminPerMinute(), MINUTE_MS, 60, "admin");
         }
         return null;
     }

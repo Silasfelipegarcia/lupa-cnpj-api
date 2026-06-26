@@ -35,11 +35,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -62,6 +64,7 @@ public class CnpjImportController {
     private final PlanLimitsService planLimitsService;
     private final TrialService trialService;
     private final SubscriptionService subscriptionService;
+    private final RequestIpResolver requestIpResolver;
 
     public CnpjImportController(CnpjImportService cnpjImportService,
                                 ImportJobQueueService jobQueueService,
@@ -71,7 +74,8 @@ public class CnpjImportController {
                                 UserRepository userRepository,
                                 PlanLimitsService planLimitsService,
                                 TrialService trialService,
-                                SubscriptionService subscriptionService) {
+                                SubscriptionService subscriptionService,
+                                RequestIpResolver requestIpResolver) {
         this.cnpjImportService = cnpjImportService;
         this.jobQueueService = jobQueueService;
         this.templateWriter = templateWriter;
@@ -81,6 +85,7 @@ public class CnpjImportController {
         this.planLimitsService = planLimitsService;
         this.trialService = trialService;
         this.subscriptionService = subscriptionService;
+        this.requestIpResolver = requestIpResolver;
     }
 
     @GetMapping("/config")
@@ -130,7 +135,7 @@ public class CnpjImportController {
                 nomeArquivo, file.getSize(), userId);
 
         List<ImportRow> linhas = cnpjImportService.lerLinhasDoArquivo(file);
-        String clientIp = RequestIpResolver.resolver(request);
+        String clientIp = requestIpResolver.resolver(request);
         ImportJobResponse job = jobQueueService.enfileirar(nomeArquivo, linhas, userId, clientIp);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(job);
@@ -158,9 +163,15 @@ public class CnpjImportController {
     }
 
     @GetMapping("/import/historico")
-    public ResponseEntity<List<ImportJobSummaryResponse>> historico() {
+    public ResponseEntity<List<ImportJobSummaryResponse>> historico(
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
         UUID userId = SecurityUtils.currentUserId();
-        return ResponseEntity.ok(jobQueueService.listarHistorico(userId, 50));
+        String etag = jobQueueService.gerarHistoricoEtag(userId);
+        if (etag != null && etag.equals(ifNoneMatch)) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(etag).build();
+        }
+        List<ImportJobSummaryResponse> body = jobQueueService.listarHistorico(userId, 50);
+        return ResponseEntity.ok().eTag(etag).body(body);
     }
 
     @GetMapping("/import/historico/{jobId}")
@@ -177,7 +188,7 @@ public class CnpjImportController {
 
     @PostMapping("/import/{jobId}/salvar-lista")
     public ResponseEntity<Void> salvarLista(@PathVariable String jobId,
-                                            @RequestBody SalvarListaRequest request) {
+                                            @Valid @RequestBody SalvarListaRequest request) {
         UUID userId = SecurityUtils.currentUserId();
         jobQueueService.salvarLista(jobId, userId, request.getNomeLista());
         return ResponseEntity.ok().build();

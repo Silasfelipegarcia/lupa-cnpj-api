@@ -63,6 +63,12 @@ app:
     import-per-user-per-hour: 10
     login-failures-before-lock: 5
     login-lock-minutes: 15
+    trust-proxy: false
+    historico-per-minute: 30
+    read-per-minute: 60
+    consulta-per-minute: 30
+    admin-per-minute: 30
+    redis-url: ${REDIS_URL:}
 
 management:
   endpoints:

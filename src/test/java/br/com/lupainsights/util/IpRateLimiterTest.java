@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class IpRateLimiterTest {
 
-    private final IpRateLimiter limiter = new IpRateLimiter();
+    private final IpRateLimiter limiter = new IpRateLimiter(new RedisRateLimiter(new br.com.lupainsights.config.SecurityProperties()));
 
     @Test
     void deveBloquearAposExcederLimite() {

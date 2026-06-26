@@ -57,6 +57,22 @@ public class ImportJobStore {
         return jobRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, limite));
     }
 
+    @Transactional(readOnly = true)
+    public String gerarHistoricoEtag(UUID userId) {
+        long count = jobRepository.countByUserId(userId);
+        List<ImportJobEntity> latest = jobRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 1));
+        StringBuilder raw = new StringBuilder(userId.toString()).append(':').append(count);
+        if (!latest.isEmpty()) {
+            ImportJobEntity job = latest.getFirst();
+            raw.append(':').append(job.getId())
+                    .append(':').append(job.getStatus())
+                    .append(':').append(job.getProcessados())
+                    .append(':').append(job.getCreatedAt())
+                    .append(':').append(job.getCompletedAt());
+        }
+        return "\"" + br.com.lupainsights.util.HashUtils.sha256Hex(raw.toString()) + "\"";
+    }
+
     @Transactional
     public void salvarResultadoLinha(ImportJob job, int linhaNumero, CnpjResult resultado) {
         resultRepository.save(mapper.toResultEntity(UUID.fromString(job.getId()), linhaNumero, resultado));

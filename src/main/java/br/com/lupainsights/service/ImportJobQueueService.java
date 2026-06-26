@@ -138,6 +138,10 @@ public class ImportJobQueueService {
                 .toList();
     }
 
+    public String gerarHistoricoEtag(UUID userId) {
+        return jobStore.gerarHistoricoEtag(userId);
+    }
+
     public ImportJobResponse consultarHistoricoDetalhe(String jobId, UUID userId) {
         ImportJob job = buscarJobDoUsuario(jobId, userId);
         return toResponse(job);

@@ -17,13 +17,16 @@ public class UserPrincipal implements UserDetails {
     private final UserRole role;
     private final SubscriptionPlan plan;
     private final boolean accountNonLocked;
+    private final boolean enabled;
 
-    public UserPrincipal(UUID id, String email, UserRole role, SubscriptionPlan plan, boolean accountNonLocked) {
+    public UserPrincipal(UUID id, String email, UserRole role, SubscriptionPlan plan,
+                         boolean accountNonLocked, boolean enabled) {
         this.id = id;
         this.email = email;
         this.role = role;
         this.plan = plan;
         this.accountNonLocked = accountNonLocked;
+        this.enabled = enabled;
     }
 
     public UUID getId() {
@@ -80,6 +83,6 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 }

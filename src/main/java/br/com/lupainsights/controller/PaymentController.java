@@ -1,5 +1,7 @@
 package br.com.lupainsights.controller;
 
+import br.com.lupainsights.audit.AuditAction;
+import br.com.lupainsights.audit.AuditLogService;
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.dto.ChargePlanRequest;
 import br.com.lupainsights.dto.ChargePlanResponse;
@@ -16,7 +18,9 @@ import br.com.lupainsights.dto.SavedCardResponse;
 import br.com.lupainsights.payment.IdempotencyService;
 import br.com.lupainsights.payment.MercadoPagoPaymentService;
 import br.com.lupainsights.payment.MercadoPagoWebhookVerifier;
+import br.com.lupainsights.observability.RequestContext;
 import br.com.lupainsights.security.SecurityUtils;
+import br.com.lupainsights.util.RequestIpResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,15 +49,21 @@ public class PaymentController {
     private final IdempotencyService idempotencyService;
     private final MercadoPagoWebhookVerifier webhookVerifier;
     private final ObjectMapper objectMapper;
+    private final AuditLogService auditLogService;
+    private final RequestIpResolver requestIpResolver;
 
     public PaymentController(MercadoPagoPaymentService paymentService,
                              IdempotencyService idempotencyService,
                              MercadoPagoWebhookVerifier webhookVerifier,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             AuditLogService auditLogService,
+                             RequestIpResolver requestIpResolver) {
         this.paymentService = paymentService;
         this.idempotencyService = idempotencyService;
         this.webhookVerifier = webhookVerifier;
         this.objectMapper = objectMapper;
+        this.auditLogService = auditLogService;
+        this.requestIpResolver = requestIpResolver;
     }
 
     @PostMapping("/checkout")
@@ -101,14 +111,20 @@ public class PaymentController {
     }
 
     @PostMapping("/cards")
-    public ResponseEntity<SavedCardResponse> salvarCartao(@RequestBody SaveCardRequest request) {
-        return ResponseEntity.status(201).body(
-                paymentService.salvarCartao(SecurityUtils.currentUserId(), request.getToken()));
+    public ResponseEntity<SavedCardResponse> salvarCartao(@RequestBody SaveCardRequest request,
+                                                          HttpServletRequest httpRequest) {
+        UUID userId = SecurityUtils.currentUserId();
+        SavedCardResponse card = paymentService.salvarCartao(userId, request.getToken());
+        auditPagamento(AuditAction.CARD_SAVED, "POST", "/payments/cards", httpRequest, userId, 201);
+        return ResponseEntity.status(201).body(card);
     }
 
     @org.springframework.web.bind.annotation.DeleteMapping("/cards/{cardId}")
-    public ResponseEntity<Void> removerCartao(@org.springframework.web.bind.annotation.PathVariable String cardId) {
-        paymentService.removerCartao(SecurityUtils.currentUserId(), cardId);
+    public ResponseEntity<Void> removerCartao(@org.springframework.web.bind.annotation.PathVariable String cardId,
+                                              HttpServletRequest httpRequest) {
+        UUID userId = SecurityUtils.currentUserId();
+        paymentService.removerCartao(userId, cardId);
+        auditPagamento(AuditAction.CARD_REMOVED, "DELETE", "/payments/cards/" + cardId, httpRequest, userId, 204);
         return ResponseEntity.noContent().build();
     }
 
@@ -136,15 +152,33 @@ public class PaymentController {
     }
 
     @PostMapping("/subscription/cancel")
-    public ResponseEntity<SubscriptionStatusResponse> cancelarAssinatura() {
-        paymentService.cancelarAssinatura(SecurityUtils.currentUserId());
-        return ResponseEntity.ok(paymentService.obterStatusAssinatura(SecurityUtils.currentUserId()));
+    public ResponseEntity<SubscriptionStatusResponse> cancelarAssinatura(HttpServletRequest httpRequest) {
+        UUID userId = SecurityUtils.currentUserId();
+        paymentService.cancelarAssinatura(userId);
+        auditPagamento(AuditAction.SUBSCRIPTION_CANCEL, "POST", "/payments/subscription/cancel", httpRequest, userId, 200);
+        return ResponseEntity.ok(paymentService.obterStatusAssinatura(userId));
     }
 
     @PostMapping("/subscription/reactivate")
-    public ResponseEntity<SubscriptionStatusResponse> reativarAssinatura() {
-        paymentService.reativarAssinatura(SecurityUtils.currentUserId());
-        return ResponseEntity.ok(paymentService.obterStatusAssinatura(SecurityUtils.currentUserId()));
+    public ResponseEntity<SubscriptionStatusResponse> reativarAssinatura(HttpServletRequest httpRequest) {
+        UUID userId = SecurityUtils.currentUserId();
+        paymentService.reativarAssinatura(userId);
+        auditPagamento(AuditAction.SUBSCRIPTION_REACTIVATE, "POST", "/payments/subscription/reactivate", httpRequest, userId, 200);
+        return ResponseEntity.ok(paymentService.obterStatusAssinatura(userId));
+    }
+
+    private void auditPagamento(AuditAction action, String method, String path,
+                                HttpServletRequest request, UUID userId, int status) {
+        auditLogService.registrar(
+                action,
+                method,
+                path,
+                requestIpResolver.resolver(request),
+                status,
+                userId,
+                null,
+                0,
+                RequestContext.requestIdAtual());
     }
 
     @PostMapping("/mercadopago/webhook")

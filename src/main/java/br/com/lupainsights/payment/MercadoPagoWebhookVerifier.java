@@ -4,7 +4,10 @@ import br.com.lupainsights.config.MercadoPagoProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -19,14 +22,21 @@ public class MercadoPagoWebhookVerifier {
     private static final Logger log = LoggerFactory.getLogger(MercadoPagoWebhookVerifier.class);
 
     private final MercadoPagoProperties properties;
+    private final Environment environment;
 
-    public MercadoPagoWebhookVerifier(MercadoPagoProperties properties) {
+    public MercadoPagoWebhookVerifier(MercadoPagoProperties properties, Environment environment) {
         this.properties = properties;
+        this.environment = environment;
     }
 
     public boolean verificar(HttpServletRequest request, String dataId) {
         String secret = properties.getWebhookSecret();
         if (secret == null || secret.isBlank()) {
+            if (isProduction()) {
+                log.error("Webhook MP rejeitado: MERCADOPAGO_WEBHOOK_SECRET ausente em produção");
+                return false;
+            }
+            log.warn("Webhook MP aceito sem assinatura (dev/local — configure MERCADOPAGO_WEBHOOK_SECRET em produção)");
             return true;
         }
 
@@ -57,6 +67,10 @@ public class MercadoPagoWebhookVerifier {
             log.warn("Webhook MP rejeitado: assinatura inválida para data.id={}", dataId);
         }
         return valido;
+    }
+
+    private boolean isProduction() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("production");
     }
 
     private static String hmacSha256Hex(String secret, String payload) {

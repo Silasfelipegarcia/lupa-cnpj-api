@@ -50,9 +50,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (user.isContaBloqueada()) {
                     throw new JwtException("Conta temporariamente bloqueada");
                 }
+                if (!user.isEnabled()) {
+                    throw new JwtException("Conta desativada");
+                }
                 UserPrincipal principal = new UserPrincipal(
                         user.getId(), user.getEmail(), user.getRole(), user.getPlan(),
-                        !user.isContaBloqueada());
+                        !user.isContaBloqueada(), user.isEnabled());
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);

@@ -25,6 +25,12 @@ public class SecurityProperties {
     private int importPerUserPerHour = 10;
     private int loginFailuresBeforeLock = 5;
     private int loginLockMinutes = 15;
+    private boolean trustProxy = false;
+    private int historicoPerMinute = 30;
+    private int readPerMinute = 60;
+    private int consultaPerMinute = 30;
+    private int adminPerMinute = 30;
+    private String redisUrl = "";
 
     public int getImportPerHour() {
         return importPerHour;
@@ -184,5 +190,57 @@ public class SecurityProperties {
 
     public void setLoginLockMinutes(int loginLockMinutes) {
         this.loginLockMinutes = loginLockMinutes;
+    }
+
+    public boolean isTrustProxy() {
+        return trustProxy;
+    }
+
+    public void setTrustProxy(boolean trustProxy) {
+        this.trustProxy = trustProxy;
+    }
+
+    public int getHistoricoPerMinute() {
+        return historicoPerMinute;
+    }
+
+    public void setHistoricoPerMinute(int historicoPerMinute) {
+        this.historicoPerMinute = historicoPerMinute;
+    }
+
+    public int getReadPerMinute() {
+        return readPerMinute;
+    }
+
+    public void setReadPerMinute(int readPerMinute) {
+        this.readPerMinute = readPerMinute;
+    }
+
+    public int getConsultaPerMinute() {
+        return consultaPerMinute;
+    }
+
+    public void setConsultaPerMinute(int consultaPerMinute) {
+        this.consultaPerMinute = consultaPerMinute;
+    }
+
+    public int getAdminPerMinute() {
+        return adminPerMinute;
+    }
+
+    public void setAdminPerMinute(int adminPerMinute) {
+        this.adminPerMinute = adminPerMinute;
+    }
+
+    public String getRedisUrl() {
+        return redisUrl;
+    }
+
+    public void setRedisUrl(String redisUrl) {
+        this.redisUrl = redisUrl;
+    }
+
+    public boolean isRedisEnabled() {
+        return redisUrl != null && !redisUrl.isBlank();
     }
 }

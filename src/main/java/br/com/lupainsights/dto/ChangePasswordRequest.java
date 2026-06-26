@@ -1,8 +1,16 @@
 package br.com.lupainsights.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class ChangePasswordRequest {
 
+    @NotBlank
+    @Size(min = 8, max = 128)
     private String senhaAtual;
+
+    @NotBlank
+    @Size(min = 8, max = 128)
     private String senhaNova;
 
     public String getSenhaAtual() {

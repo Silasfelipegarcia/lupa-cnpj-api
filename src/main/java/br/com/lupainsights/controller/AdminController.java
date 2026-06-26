@@ -28,10 +28,14 @@ public class AdminController {
 
     private final AdminMetricsService adminMetricsService;
     private final AuditLogService auditLogService;
+    private final RequestIpResolver requestIpResolver;
 
-    public AdminController(AdminMetricsService adminMetricsService, AuditLogService auditLogService) {
+    public AdminController(AdminMetricsService adminMetricsService,
+                           AuditLogService auditLogService,
+                           RequestIpResolver requestIpResolver) {
         this.adminMetricsService = adminMetricsService;
         this.auditLogService = auditLogService;
+        this.requestIpResolver = requestIpResolver;
     }
 
     @GetMapping("/overview")
@@ -63,7 +67,7 @@ public class AdminController {
                 AuditAction.ADMIN_ACCESS,
                 "GET",
                 path,
-                RequestIpResolver.resolver(request),
+                requestIpResolver.resolver(request),
                 200,
                 SecurityUtils.currentUserIdOrNull(),
                 null,
