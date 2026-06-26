@@ -39,7 +39,7 @@ source .env
 set +a
 
 echo "API local → http://localhost:8080"
-echo "Mercado Pago: ${MERCADOPAGO_PUBLIC_KEY:+configurado}${MERCADOPAGO_PUBLIC_KEY:-NÃO configurado}"
+echo "Mercado Pago: $([ -n "${MERCADOPAGO_PUBLIC_KEY:-}" ] && echo configurado || echo NÃO configurado)"
 echo "Subindo (1ª vez ~30–60s; sem mudança no código fica mais rápido)..."
 
 START=$(date +%s)
