@@ -10,7 +10,7 @@ public class MercadoPagoProperties {
     private String frontendUrl = "https://www.lupacnpjs.com.br";
     private String apiPublicUrl = "https://lupa-cnpj-api-production.up.railway.app";
     private String apiBaseUrl = "https://api.mercadopago.com";
-    private int premiumPriceCents = 1900;
+    private int premiumPriceCents = 1990;
     private int proPlusPriceCents = 4990;
     private String webhookSecret = "";
 

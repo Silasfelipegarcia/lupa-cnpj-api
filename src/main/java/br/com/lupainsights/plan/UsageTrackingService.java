@@ -129,7 +129,7 @@ public class UsageTrackingService {
         PlanLimits limits = planLimitsService.limitesDe(user);
         if (linhas > limits.maxRowsPerFile()) {
             throw new IllegalArgumentException(String.format(
-                    "Seu plano %s permite até %d empresa(s) por arquivo. Faça upgrade para enviar mais linhas.",
+                    "Seu plano %s permite até %d empresa(s) por planilha. Faça upgrade para enviar mais linhas.",
                     planLimitsService.nomeExibicao(user.getPlan()),
                     limits.maxRowsPerFile()));
         }

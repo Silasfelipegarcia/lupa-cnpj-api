@@ -28,9 +28,9 @@ public class PlanLimitsService {
         }
         SubscriptionPlan plan = subscriptionService.resolverPlanoEfetivo(user);
         return switch (plan) {
-            case FREE -> new PlanLimits(5, 5, 3, false, false, false, false, false, true, 1);
-            case PREMIUM -> new PlanLimits(100, 100, null, true, true, true, false, false, false, null);
-            case PRO_PLUS -> new PlanLimits(900, 500, null, true, true, true, true, true, false, null);
+            case FREE -> new PlanLimits(5, null, 3, false, false, false, false, false, true, 1);
+            case PREMIUM -> new PlanLimits(100, null, null, true, true, true, false, false, false, 10);
+            case PRO_PLUS -> new PlanLimits(500, null, null, true, true, true, true, true, false, 50);
         };
     }
 
@@ -45,8 +45,8 @@ public class PlanLimitsService {
     public String descricaoCurta(SubscriptionPlan plan) {
         return switch (plan) {
             case FREE -> "3 CNPJs/dia · 1 planilha de até 5 linhas";
-            case PREMIUM -> "SDRs e pré-vendas no dia a dia";
-            case PRO_PLUS -> "Volume e filtros para equipes comerciais";
+            case PREMIUM -> "10 planilhas/dia · até 100 empresas por planilha";
+            case PRO_PLUS -> "50 planilhas/dia · até 500 empresas por planilha";
         };
     }
 }

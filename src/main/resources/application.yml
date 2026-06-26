@@ -85,7 +85,7 @@ mercadopago:
   public-key: ${MERCADOPAGO_PUBLIC_KEY:}
   frontend-url: ${FRONTEND_URL:http://localhost:4200}
   api-public-url: ${API_PUBLIC_URL:http://localhost:8080}
-  premium-price-cents: ${MERCADOPAGO_PREMIUM_PRICE_CENTS:1900}
+  premium-price-cents: ${MERCADOPAGO_PREMIUM_PRICE_CENTS:1990}
   pro-plus-price-cents: ${MERCADOPAGO_PRO_PLUS_PRICE_CENTS:4990}
   webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
 

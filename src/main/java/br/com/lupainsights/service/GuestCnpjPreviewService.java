@@ -45,8 +45,9 @@ public class GuestCnpjPreviewService {
             PlanLimits free = limitesPlanoFree();
             throw new IllegalStateException(
                     "Você já usou sua consulta gratuita completa. Crie uma conta grátis e consulte até "
-                            + free.maxDirectCnpjPerDay() + " CNPJs únicos por dia, com até "
-                            + free.maxBatchSearchesPerDay() + " empresas em planilha por dia.");
+                            + free.maxDirectCnpjPerDay() + " CNPJs únicos por dia, com "
+                            + free.maxImportJobsPerDay() + " planilha(s) de até "
+                            + free.maxRowsPerFile() + " linhas por dia.");
         }
 
         String cnpj = CnpjValidator.removerMascara(cnpjInformado);
@@ -92,7 +93,7 @@ public class GuestCnpjPreviewService {
         preview.setConsultasRestantes(quotaAtualizada.getConsultasRestantes());
         preview.setCadastroLimiteCnpjDia(valorInteiro(free.maxDirectCnpjPerDay()));
         preview.setCadastroLimitePlanilha(free.maxRowsPerFile());
-        preview.setCadastroLimiteLoteDia(valorInteiro(free.maxBatchSearchesPerDay()));
+        preview.setCadastroLimiteLoteDia(valorInteiro(free.maxImportJobsPerDay()));
         return preview;
     }
 

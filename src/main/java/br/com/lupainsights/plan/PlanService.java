@@ -63,7 +63,7 @@ public class PlanService {
         item.setNome(planLimitsService.nomeExibicao(plan));
         item.setDescricao(planLimitsService.descricaoCurta(plan));
         item.setMaxRowsPerFile(limits.maxRowsPerFile());
-        item.setBatchSearchesPerDay(formatarLimiteBatch(plan, limits));
+        item.setBatchSearchesPerDay(formatarLimitePlanilhas(limits));
         item.setDirectCnpjPerDay(formatarLimiteDirect(plan, limits));
         item.setPriceCents(priceCents);
         item.setPriceLabel(priceCents == 0 ? "Grátis" : String.format("R$ %.2f/mês", priceCents / 100.0));
@@ -93,8 +93,8 @@ public class PlanService {
 
     private List<String> beneficiosDe(SubscriptionPlan plan, PlanLimits limits) {
         List<String> beneficios = new ArrayList<>();
-        beneficios.add("Até " + limits.maxRowsPerFile() + " empresas por arquivo");
-        beneficios.add("Planilha em massa: " + formatarLimiteBatch(plan, limits));
+        beneficios.add("Até " + limits.maxRowsPerFile() + " empresas por planilha");
+        beneficios.add(formatarLimitePlanilhas(limits));
         beneficios.add("CNPJ único: " + formatarLimiteDirect(plan, limits) + " por dia");
         if (limits.pesquisaRazaoSocial()) {
             beneficios.add("Busca por razão social");
@@ -114,7 +114,6 @@ public class PlanService {
         if (plan == SubscriptionPlan.FREE) {
             beneficios.add("Histórico de 7 dias");
             beneficios.add("Telefone, e-mail e endereço no plano pago");
-            beneficios.add("1 importação por dia (até 5 linhas)");
         } else if (plan == SubscriptionPlan.PREMIUM) {
             beneficios.add("Histórico de 90 dias");
             beneficios.add("7 dias grátis com cartão cadastrado");
@@ -131,11 +130,11 @@ public class PlanService {
         return user;
     }
 
-    private String formatarLimiteBatch(SubscriptionPlan plan, PlanLimits limits) {
-        if (limits.isUnlimitedBatch()) {
-            return "Ilimitado";
+    private String formatarLimitePlanilhas(PlanLimits limits) {
+        if (limits.maxImportJobsPerDay() == null) {
+            return "Planilhas/dia: ilimitado";
         }
-        return limits.maxBatchSearchesPerDay() + " empresas/dia";
+        return limits.maxImportJobsPerDay() + " planilhas/dia";
     }
 
     private String formatarLimiteDirect(SubscriptionPlan plan, PlanLimits limits) {
