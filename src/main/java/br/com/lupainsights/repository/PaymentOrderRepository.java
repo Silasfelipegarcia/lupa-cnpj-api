@@ -14,4 +14,6 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrderEntity
     Optional<PaymentOrderEntity> findByMpPreferenceId(String mpPreferenceId);
 
     List<PaymentOrderEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    List<PaymentOrderEntity> findTop3ByUserIdAndStatusOrderByCreatedAtDesc(UUID userId, String status);
 }

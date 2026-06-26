@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -105,6 +106,10 @@ public class MercadoPagoCustomerService {
     IllegalArgumentException traduzirErro(String prefixo, RestClientResponseException e) {
         log.warn("Mercado Pago {}: {} {}", prefixo, e.getStatusCode(), e.getResponseBodyAsString());
         String detalhe = extrairMensagem(e.getResponseBodyAsString());
+        if (detalhe.toLowerCase(Locale.ROOT).contains("card not found")) {
+            return new IllegalArgumentException(
+                    "Cartão salvo inválido ou expirado no Mercado Pago. Remova e cadastre novamente em Cobrança.");
+        }
         if (detalhe.isBlank()) {
             return new IllegalArgumentException(prefixo + ". Tente novamente.");
         }

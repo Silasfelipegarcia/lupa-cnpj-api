@@ -4,6 +4,8 @@ import br.com.lupainsights.config.MercadoPagoProperties;
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.dto.ChargePlanRequest;
 import br.com.lupainsights.dto.ChargePlanResponse;
+import br.com.lupainsights.dto.CheckoutSyncRequest;
+import br.com.lupainsights.dto.CheckoutSyncResponse;
 import br.com.lupainsights.dto.CheckoutResponse;
 import br.com.lupainsights.dto.PaymentConfigResponse;
 import br.com.lupainsights.dto.PaymentHistoryItemResponse;
@@ -12,6 +14,7 @@ import br.com.lupainsights.dto.SubscriptionStatusResponse;
 import br.com.lupainsights.dto.SavedCardResponse;
 import br.com.lupainsights.entity.PaymentOrderEntity;
 import br.com.lupainsights.entity.UserEntity;
+import br.com.lupainsights.exception.ForbiddenException;
 import br.com.lupainsights.plan.PlanLimitsService;
 import br.com.lupainsights.repository.PaymentOrderRepository;
 import br.com.lupainsights.repository.UserRepository;
@@ -143,6 +146,7 @@ public class MercadoPagoPaymentService {
                 properties.isCheckoutReady());
     }
 
+    @Transactional
     public List<SavedCardResponse> listarCartoes(UUID userId) {
         if (!properties.isConfigured()) {
             return List.of();
@@ -166,10 +170,29 @@ public class MercadoPagoPaymentService {
             for (JsonNode node : response) {
                 cards.add(mapearCartao(node));
             }
+            sincronizarCartaoPadrao(user, cards);
+            for (SavedCardResponse card : cards) {
+                card.setDefaultCard(card.getId().equals(user.getDefaultCardId()));
+            }
             return cards;
         } catch (RestClientResponseException e) {
             log.warn("Falha ao listar cartões MP para usuário {}: {}", userId, e.getMessage());
             return List.of();
+        }
+    }
+
+    private void sincronizarCartaoPadrao(UserEntity user, List<SavedCardResponse> cards) {
+        if (cards.isEmpty()) {
+            if (user.getDefaultCardId() != null && !user.getDefaultCardId().isBlank()) {
+                user.setDefaultCardId(null);
+                userRepository.save(user);
+            }
+            return;
+        }
+        boolean padraoValido = user.getDefaultCardId() != null
+                && cards.stream().anyMatch(c -> c.getId().equals(user.getDefaultCardId()));
+        if (!padraoValido) {
+            subscriptionService.definirCartaoPadrao(user, cards.get(0).getId());
         }
     }
 
@@ -198,9 +221,8 @@ public class MercadoPagoPaymentService {
                 throw new IllegalStateException("Não foi possível salvar o cartão. Verifique os dados e tente novamente.");
             }
             SavedCardResponse card = mapearCartao(response);
-            if (user.getDefaultCardId() == null || user.getDefaultCardId().isBlank()) {
-                subscriptionService.definirCartaoPadrao(user, card.getId());
-            }
+            subscriptionService.definirCartaoPadrao(user, card.getId());
+            card.setDefaultCard(true);
             return card;
         } catch (RestClientResponseException e) {
             throw customerService.traduzirErro("Não foi possível salvar o cartão", e);
@@ -246,6 +268,11 @@ public class MercadoPagoPaymentService {
                 : userRepository.findById(userId)
                         .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
 
+        JsonNode cartaoMp = null;
+        if (cartaoSalvo && request.getCardId() != null && !request.getCardId().isBlank()) {
+            cartaoMp = buscarCartaoSalvo(user, request.getCardId());
+        }
+
         String paymentToken = resolverTokenPagamento(user, request);
         int amountCents = subscriptionService.calcularValorCobranca(user, plan);
 
@@ -270,6 +297,9 @@ public class MercadoPagoPaymentService {
         body.put("installments", 1);
         body.put("external_reference", orderId.toString());
         body.put("payer", payer);
+        if (cartaoMp != null) {
+            adicionarDadosCartaoSalvo(body, cartaoMp);
+        }
         adicionarNotificationUrlSeAplicavel(body);
 
         JsonNode payment;
@@ -426,6 +456,38 @@ public class MercadoPagoPaymentService {
         return tokenResponse.get("id").asText();
     }
 
+    private JsonNode buscarCartaoSalvo(UserEntity user, String cardId) {
+        if (user.getMpCustomerId() == null || user.getMpCustomerId().isBlank()) {
+            throw new IllegalArgumentException("Cadastre um cartão antes de assinar");
+        }
+        try {
+            JsonNode card = restClient.get()
+                    .uri("/v1/customers/{customerId}/cards/{cardId}",
+                            user.getMpCustomerId(), cardId)
+                    .header("Authorization", "Bearer " + properties.getAccessToken())
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (card == null || !card.has("id")) {
+                throw new IllegalArgumentException(
+                        "Cartão salvo não encontrado no Mercado Pago. Cadastre novamente em Cobrança.");
+            }
+            return card;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                throw new IllegalArgumentException(
+                        "Cartão salvo não encontrado no Mercado Pago. Cadastre novamente em Cobrança.");
+            }
+            throw customerService.traduzirErro("Não foi possível validar o cartão salvo", e);
+        }
+    }
+
+    private void adicionarDadosCartaoSalvo(Map<String, Object> body, JsonNode cartaoMp) {
+        String paymentMethodId = cartaoMp.path("payment_method").path("id").asText(null);
+        if (paymentMethodId != null && !paymentMethodId.isBlank()) {
+            body.put("payment_method_id", paymentMethodId);
+        }
+    }
+
     private SavedCardResponse mapearCartao(JsonNode node) {
         SavedCardResponse card = new SavedCardResponse();
         card.setId(node.path("id").asText(null));
@@ -471,6 +533,145 @@ public class MercadoPagoPaymentService {
             case "REJECTED", "CANCELLED" -> "Recusado";
             default -> status;
         };
+    }
+
+    @Transactional
+    public CheckoutSyncResponse sincronizarCheckoutRetorno(UUID userId, CheckoutSyncRequest request) {
+        if (!properties.isConfigured()) {
+            throw new IllegalStateException("Pagamentos não configurados.");
+        }
+
+        PaymentOrderEntity order = resolverOrdemCheckout(userId, request);
+        if (order == null) {
+            throw new IllegalArgumentException("Pedido de pagamento não encontrado.");
+        }
+
+        if ("APPROVED".equalsIgnoreCase(order.getStatus())) {
+            return montarSyncResponse(order);
+        }
+
+        String paymentId = request.getPaymentId();
+        if (paymentId == null || paymentId.isBlank()) {
+            paymentId = buscarPaymentIdMercadoPago(order.getId());
+        }
+        if (paymentId == null || paymentId.isBlank()) {
+            CheckoutSyncResponse pendente = montarSyncResponse(order);
+            pendente.setStatus("PENDING");
+            pendente.setStatusLabel(rotuloStatus("PENDING"));
+            return pendente;
+        }
+
+        validarPagamentoDoUsuario(userId, paymentId);
+        processarNotificacao(paymentId);
+
+        PaymentOrderEntity atualizado = paymentOrderRepository.findById(order.getId())
+                .orElseThrow(() -> new IllegalStateException("Pedido não encontrado após sincronização"));
+        return montarSyncResponse(atualizado);
+    }
+
+    private PaymentOrderEntity resolverOrdemCheckout(UUID userId, CheckoutSyncRequest request) {
+        if (request.getOrderId() != null && !request.getOrderId().isBlank()) {
+            return carregarOrdemDoUsuario(userId, request.getOrderId());
+        }
+        if (request.getExternalReference() != null && !request.getExternalReference().isBlank()) {
+            return carregarOrdemDoUsuario(userId, request.getExternalReference());
+        }
+        if (request.getPreferenceId() != null && !request.getPreferenceId().isBlank()) {
+            PaymentOrderEntity porPreferencia = paymentOrderRepository
+                    .findByMpPreferenceId(request.getPreferenceId())
+                    .orElse(null);
+            if (porPreferencia != null && porPreferencia.getUserId().equals(userId)) {
+                return porPreferencia;
+            }
+            return null;
+        }
+        if (request.getPaymentId() != null && !request.getPaymentId().isBlank()) {
+            JsonNode payment = buscarPagamentoMercadoPago(request.getPaymentId());
+            if (payment != null) {
+                String externalReference = payment.path("external_reference").asText("");
+                if (!externalReference.isBlank()) {
+                    return carregarOrdemDoUsuario(userId, externalReference);
+                }
+            }
+        }
+
+        List<PaymentOrderEntity> pendentes =
+                paymentOrderRepository.findTop3ByUserIdAndStatusOrderByCreatedAtDesc(userId, "PENDING");
+        return pendentes.isEmpty() ? null : pendentes.get(0);
+    }
+
+    private PaymentOrderEntity carregarOrdemDoUsuario(UUID userId, String orderIdText) {
+        UUID orderId;
+        try {
+            orderId = UUID.fromString(orderIdText);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        PaymentOrderEntity order = paymentOrderRepository.findById(orderId).orElse(null);
+        if (order == null || !order.getUserId().equals(userId)) {
+            return null;
+        }
+        return order;
+    }
+
+    private void validarPagamentoDoUsuario(UUID userId, String paymentId) {
+        JsonNode payment = buscarPagamentoMercadoPago(paymentId);
+        if (payment == null) {
+            throw new IllegalArgumentException("Pagamento não encontrado no Mercado Pago.");
+        }
+        String externalReference = payment.path("external_reference").asText("");
+        PaymentOrderEntity order = carregarOrdemDoUsuario(userId, externalReference);
+        if (order == null) {
+            throw new ForbiddenException("Pagamento não pertence a este usuário.");
+        }
+    }
+
+    private JsonNode buscarPagamentoMercadoPago(String paymentId) {
+        try {
+            return restClient.get()
+                    .uri("/v1/payments/{id}", paymentId)
+                    .header("Authorization", "Bearer " + properties.getAccessToken())
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            log.warn("Falha ao buscar pagamento {} no MP: {}", paymentId, e.getMessage());
+            return null;
+        }
+    }
+
+    private String buscarPaymentIdMercadoPago(UUID orderId) {
+        try {
+            JsonNode response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/payments/search")
+                            .queryParam("external_reference", orderId.toString())
+                            .queryParam("sort", "date_created")
+                            .queryParam("criteria", "desc")
+                            .build())
+                    .header("Authorization", "Bearer " + properties.getAccessToken())
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (response == null || !response.has("results") || !response.get("results").isArray()) {
+                return null;
+            }
+            JsonNode results = response.get("results");
+            if (results.isEmpty()) {
+                return null;
+            }
+            return results.get(0).path("id").asText(null);
+        } catch (RestClientResponseException e) {
+            log.warn("Falha ao buscar pagamentos por external_reference {}: {}", orderId, e.getMessage());
+            return null;
+        }
+    }
+
+    private CheckoutSyncResponse montarSyncResponse(PaymentOrderEntity order) {
+        CheckoutSyncResponse response = new CheckoutSyncResponse();
+        response.setOrderId(order.getId().toString());
+        response.setStatus(order.getStatus());
+        response.setStatusLabel(rotuloStatus(order.getStatus()));
+        response.setPlanNome(planLimitsService.nomeExibicao(order.getPlan()));
+        return response;
     }
 
     @Transactional

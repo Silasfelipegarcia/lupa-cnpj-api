@@ -8,6 +8,7 @@ public class SavedCardResponse {
     private String expirationMonth;
     private String expirationYear;
     private String holderName;
+    private boolean defaultCard;
 
     public String getId() {
         return id;
@@ -55,5 +56,13 @@ public class SavedCardResponse {
 
     public void setHolderName(String holderName) {
         this.holderName = holderName;
+    }
+
+    public boolean isDefaultCard() {
+        return defaultCard;
+    }
+
+    public void setDefaultCard(boolean defaultCard) {
+        this.defaultCard = defaultCard;
     }
 }

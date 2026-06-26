@@ -3,6 +3,8 @@ package br.com.lupainsights.controller;
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.dto.ChargePlanRequest;
 import br.com.lupainsights.dto.ChargePlanResponse;
+import br.com.lupainsights.dto.CheckoutSyncRequest;
+import br.com.lupainsights.dto.CheckoutSyncResponse;
 import br.com.lupainsights.dto.CheckoutRequest;
 import br.com.lupainsights.dto.CheckoutResponse;
 import br.com.lupainsights.dto.PaymentConfigResponse;
@@ -69,6 +71,12 @@ public class PaymentController {
         ResponseEntity<CheckoutResponse> response = ResponseEntity.ok(checkout);
         idempotencyService.salvar(userId, CHECKOUT_ENDPOINT, idempotencyKey, response);
         return response;
+    }
+
+    @PostMapping("/checkout/sync")
+    public ResponseEntity<CheckoutSyncResponse> sincronizarCheckout(@RequestBody CheckoutSyncRequest request) {
+        UUID userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(paymentService.sincronizarCheckoutRetorno(userId, request));
     }
 
     @GetMapping("/quote")
