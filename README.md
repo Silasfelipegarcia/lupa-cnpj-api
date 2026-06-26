@@ -2,7 +2,7 @@
 
 API Spring Boot para enriquecer listas de CNPJs consultando a [API pública CNPJ.ws](https://publica.cnpj.ws).
 
-Frontend em [lupa-insights](https://github.com/Silasfelipegarcia/lupa-insights) · Documentação completa em [docs/DOCUMENTACAO.md](../docs/DOCUMENTACAO.md).
+Frontend em [lupa-insights](https://github.com/Silasfelipegarcia/lupa-insights) · Documentação em [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md) · Roadmap de negócio em [docs/ROADMAP-NEGOCIO.md](docs/ROADMAP-NEGOCIO.md).
 
 **Produção:** https://lupa-cnpj-api-production.up.railway.app
 

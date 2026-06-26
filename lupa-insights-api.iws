@@ -5,7 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="140ee35c-041a-4306-8394-1f0e88491c60" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/scripts/start-local.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/start-local.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
