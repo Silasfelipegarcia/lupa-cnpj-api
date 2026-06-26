@@ -3,6 +3,7 @@ package br.com.lupainsights.controller;
 import br.com.lupainsights.audit.AuditAction;
 import br.com.lupainsights.audit.AuditLogService;
 import br.com.lupainsights.dto.AnalyticsEventRequest;
+import br.com.lupainsights.observability.RequestContext;
 import br.com.lupainsights.security.SecurityUtils;
 import br.com.lupainsights.util.RequestIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,7 +48,8 @@ public class AnalyticsController {
                 200,
                 userId,
                 detalhes,
-                0);
+                0,
+                RequestContext.requestIdAtual());
         return ResponseEntity.accepted().build();
     }
 }

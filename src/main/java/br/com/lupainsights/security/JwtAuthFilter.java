@@ -1,6 +1,7 @@
 package br.com.lupainsights.security;
 
 import br.com.lupainsights.entity.UserEntity;
+import br.com.lupainsights.observability.RequestContext;
 import br.com.lupainsights.repository.UserRepository;
 import br.com.lupainsights.service.JwtService;
 import io.jsonwebtoken.JwtException;
@@ -46,11 +47,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String email = jwtService.validarToken(token).get("email", String.class);
                 UserEntity user = userRepository.findById(userId)
                         .orElseThrow(() -> new JwtException("Usuário não encontrado"));
+                if (user.isContaBloqueada()) {
+                    throw new JwtException("Conta temporariamente bloqueada");
+                }
                 UserPrincipal principal = new UserPrincipal(
-                        user.getId(), user.getEmail(), user.getRole(), user.getPlan());
+                        user.getId(), user.getEmail(), user.getRole(), user.getPlan(),
+                        !user.isContaBloqueada());
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                RequestContext.definirUserId(user.getId().toString());
             } catch (JwtException | IllegalArgumentException ex) {
                 SecurityContextHolder.clearContext();
                 if (exigeJwt(path, method)) {

@@ -30,9 +30,11 @@ public class AuditLogService {
                           int statusCode,
                           UUID userId,
                           String details,
-                          int durationMs) {
+                          int durationMs,
+                          String requestId) {
         String userLabel = userId != null ? userId.toString() : "anonymous";
-        AUDIT.info("action={} method={} path={} status={} user={} ip={} durationMs={} details={}",
+        AUDIT.info("requestId={} action={} method={} path={} status={} user={} ip={} durationMs={} details={}",
+                requestId != null ? requestId : "",
                 action, method, path, statusCode, userLabel, ip, durationMs,
                 details != null ? details : "");
 
@@ -46,6 +48,7 @@ public class AuditLogService {
         entry.setStatusCode(statusCode);
         entry.setDetails(truncar(details, 1000));
         entry.setDurationMs(durationMs);
+        entry.setRequestId(truncar(requestId, 36));
         repository.save(entry);
     }
 

@@ -19,6 +19,12 @@ public class SecurityProperties {
     private int guestPreviewMax = 3;
     private long guestPreviewWindowDays = 365;
     private int guestPreviewPerMinute = 10;
+    private int paymentsPerMinute = 20;
+    private int analyticsPerMinute = 60;
+    private int passwordChangePerHour = 5;
+    private int importPerUserPerHour = 10;
+    private int loginFailuresBeforeLock = 5;
+    private int loginLockMinutes = 15;
 
     public int getImportPerHour() {
         return importPerHour;
@@ -130,5 +136,53 @@ public class SecurityProperties {
 
     public void setGuestPreviewPerMinute(int guestPreviewPerMinute) {
         this.guestPreviewPerMinute = guestPreviewPerMinute;
+    }
+
+    public int getPaymentsPerMinute() {
+        return paymentsPerMinute;
+    }
+
+    public void setPaymentsPerMinute(int paymentsPerMinute) {
+        this.paymentsPerMinute = paymentsPerMinute;
+    }
+
+    public int getAnalyticsPerMinute() {
+        return analyticsPerMinute;
+    }
+
+    public void setAnalyticsPerMinute(int analyticsPerMinute) {
+        this.analyticsPerMinute = analyticsPerMinute;
+    }
+
+    public int getPasswordChangePerHour() {
+        return passwordChangePerHour;
+    }
+
+    public void setPasswordChangePerHour(int passwordChangePerHour) {
+        this.passwordChangePerHour = passwordChangePerHour;
+    }
+
+    public int getImportPerUserPerHour() {
+        return importPerUserPerHour;
+    }
+
+    public void setImportPerUserPerHour(int importPerUserPerHour) {
+        this.importPerUserPerHour = importPerUserPerHour;
+    }
+
+    public int getLoginFailuresBeforeLock() {
+        return loginFailuresBeforeLock;
+    }
+
+    public void setLoginFailuresBeforeLock(int loginFailuresBeforeLock) {
+        this.loginFailuresBeforeLock = loginFailuresBeforeLock;
+    }
+
+    public int getLoginLockMinutes() {
+        return loginLockMinutes;
+    }
+
+    public void setLoginLockMinutes(int loginLockMinutes) {
+        this.loginLockMinutes = loginLockMinutes;
     }
 }

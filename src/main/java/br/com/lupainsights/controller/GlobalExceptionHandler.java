@@ -2,6 +2,7 @@ package br.com.lupainsights.controller;
 
 import br.com.lupainsights.exception.ForbiddenException;
 import br.com.lupainsights.exception.TooManyRequestsException;
+import br.com.lupainsights.observability.RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -21,45 +22,57 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<Map<String, String>> handleForbidden(ForbiddenException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("erro", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(respostaErro(ex.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("erro", "Acesso negado"));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(respostaErro("Acesso negado"));
     }
 
     @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotAuthenticated(AuthenticationCredentialsNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("erro", "Não autenticado"));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(respostaErro("Não autenticado"));
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException ex) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .body(Map.of("erro", ex.getMessage()));
+                .body(respostaErro(ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("erro", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(respostaErro(ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(Map.of("erro", ex.getMessage()));
+        return ResponseEntity.badRequest().body(respostaErro(ex.getMessage()));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(NoResourceFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("erro", "Rota não encontrada"));
+                .body(respostaErro("Rota não encontrada"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneric(Exception ex) {
-        log.error("Erro não tratado", ex);
+        log.error("Erro não tratado requestId={} userId={} message={}",
+                RequestContext.requestIdAtual(),
+                org.slf4j.MDC.get(RequestContext.MDC_USER_ID),
+                ex.getMessage(),
+                ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("erro", "Erro interno no servidor. Tente novamente mais tarde."));
+                .body(respostaErro("Erro interno no servidor. Tente novamente mais tarde."));
+    }
+
+    private Map<String, String> respostaErro(String mensagem) {
+        String requestId = RequestContext.requestIdAtual();
+        if (requestId != null && !requestId.isBlank()) {
+            return Map.of("erro", mensagem, "requestId", requestId);
+        }
+        return Map.of("erro", mensagem);
     }
 }

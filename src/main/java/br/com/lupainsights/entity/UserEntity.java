@@ -66,6 +66,12 @@ public class UserEntity {
     @Column(name = "default_card_id", length = 50)
     private String defaultCardId;
 
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     public UUID getId() {
         return id;
     }
@@ -192,5 +198,25 @@ public class UserEntity {
 
     public void setDefaultCardId(String defaultCardId) {
         this.defaultCardId = defaultCardId;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Instant lockedUntil) {
+        this.lockedUntil = lockedUntil;
+    }
+
+    public boolean isContaBloqueada() {
+        return lockedUntil != null && Instant.now().isBefore(lockedUntil);
     }
 }

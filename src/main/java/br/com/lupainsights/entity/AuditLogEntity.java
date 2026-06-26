@@ -45,6 +45,9 @@ public class AuditLogEntity {
     @Column(name = "duration_ms", nullable = false)
     private int durationMs;
 
+    @Column(name = "request_id", length = 36)
+    private String requestId;
+
     public Long getId() {
         return id;
     }
@@ -123,5 +126,13 @@ public class AuditLogEntity {
 
     public void setDurationMs(int durationMs) {
         this.durationMs = durationMs;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 }

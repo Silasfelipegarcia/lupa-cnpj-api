@@ -1,5 +1,6 @@
 package br.com.lupainsights.service;
 
+import br.com.lupainsights.config.SecurityProperties;
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.domain.UserRole;
 import br.com.lupainsights.dto.AuthResponse;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -31,6 +33,7 @@ public class AuthService {
     private final PlanLimitsService planLimitsService;
     private final TrialService trialService;
     private final SubscriptionService subscriptionService;
+    private final SecurityProperties securityProperties;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
@@ -38,7 +41,8 @@ public class AuthService {
                        PlanService planService,
                        PlanLimitsService planLimitsService,
                        TrialService trialService,
-                       SubscriptionService subscriptionService) {
+                       SubscriptionService subscriptionService,
+                       SecurityProperties securityProperties) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -46,6 +50,7 @@ public class AuthService {
         this.planLimitsService = planLimitsService;
         this.trialService = trialService;
         this.subscriptionService = subscriptionService;
+        this.securityProperties = securityProperties;
     }
 
     public AuthResponse registrar(RegisterRequest request) {
@@ -86,9 +91,18 @@ public class AuthService {
         UserEntity user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new IllegalArgumentException("E-mail ou senha inválidos"));
 
+        if (user.isContaBloqueada()) {
+            throw new IllegalStateException("Conta temporariamente bloqueada por tentativas de login. Tente novamente mais tarde.");
+        }
+
         if (!user.isEnabled() || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            registrarFalhaLogin(user);
             throw new IllegalArgumentException("E-mail ou senha inválidos");
         }
+
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        userRepository.save(user);
 
         trialService.expirarTrialSeNecessario(user);
         subscriptionService.expirarSeNecessario(user);
@@ -163,5 +177,16 @@ public class AuthService {
 
     private String normalizarEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void registrarFalhaLogin(UserEntity user) {
+        int tentativas = user.getFailedLoginAttempts() + 1;
+        user.setFailedLoginAttempts(tentativas);
+        if (tentativas >= securityProperties.getLoginFailuresBeforeLock()) {
+            user.setLockedUntil(Instant.now().plus(
+                    securityProperties.getLoginLockMinutes(), ChronoUnit.MINUTES));
+            user.setFailedLoginAttempts(0);
+        }
+        userRepository.save(user);
     }
 }

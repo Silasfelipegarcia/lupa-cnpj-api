@@ -19,9 +19,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final AuthenticatedRateLimitFilter authenticatedRateLimitFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          AuthenticatedRateLimitFilter authenticatedRateLimitFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.authenticatedRateLimitFilter = authenticatedRateLimitFilter;
     }
 
     @Bean
@@ -46,7 +49,8 @@ public class SecurityConfig {
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     response.getWriter().write("{\"erro\":\"Não autenticado\"}");
                 }))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(authenticatedRateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }

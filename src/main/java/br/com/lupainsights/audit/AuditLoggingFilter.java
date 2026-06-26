@@ -1,5 +1,6 @@
 package br.com.lupainsights.audit;
 
+import br.com.lupainsights.observability.RequestContext;
 import br.com.lupainsights.security.SecurityUtils;
 import br.com.lupainsights.util.RequestIpResolver;
 import jakarta.servlet.FilterChain;
@@ -60,7 +61,8 @@ public class AuditLoggingFilter extends OncePerRequestFilter {
         }
 
         String details = montarDetalhes(method, path, status);
-        auditLogService.registrar(action, method, path, ip, status, userId, details, durationMs);
+        String requestId = RequestContext.requestIdAtual();
+        auditLogService.registrar(action, method, path, ip, status, userId, details, durationMs, requestId);
     }
 
     private AuditAction resolverAcao(String method, String path, int status) {

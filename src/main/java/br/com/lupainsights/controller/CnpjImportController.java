@@ -15,6 +15,7 @@ import br.com.lupainsights.plan.PlanLimits;
 import br.com.lupainsights.plan.PlanLimitsService;
 import br.com.lupainsights.repository.UserRepository;
 import br.com.lupainsights.security.SecurityUtils;
+import br.com.lupainsights.util.RequestIpResolver;
 import br.com.lupainsights.service.CnpjDirectConsultaService;
 import br.com.lupainsights.service.CnpjImportService;
 import br.com.lupainsights.service.ImportJobQueueService;
@@ -37,6 +38,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -107,7 +110,8 @@ public class CnpjImportController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ImportJobResponse> importar(@RequestParam("file") MultipartFile file) throws Exception {
+    public ResponseEntity<ImportJobResponse> importar(@RequestParam("file") MultipartFile file,
+                                                      HttpServletRequest request) throws Exception {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -126,7 +130,8 @@ public class CnpjImportController {
                 nomeArquivo, file.getSize(), userId);
 
         List<ImportRow> linhas = cnpjImportService.lerLinhasDoArquivo(file);
-        ImportJobResponse job = jobQueueService.enfileirar(nomeArquivo, linhas, userId);
+        String clientIp = RequestIpResolver.resolver(request);
+        ImportJobResponse job = jobQueueService.enfileirar(nomeArquivo, linhas, userId, clientIp);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(job);
     }

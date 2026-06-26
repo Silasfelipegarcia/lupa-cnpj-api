@@ -12,6 +12,7 @@ public class MercadoPagoProperties {
     private String apiBaseUrl = "https://api.mercadopago.com";
     private int premiumPriceCents = 4990;
     private int proPlusPriceCents = 9990;
+    private String webhookSecret = "";
 
     public String getAccessToken() {
         return accessToken;
@@ -67,6 +68,14 @@ public class MercadoPagoProperties {
 
     public void setProPlusPriceCents(int proPlusPriceCents) {
         this.proPlusPriceCents = proPlusPriceCents;
+    }
+
+    public String getWebhookSecret() {
+        return webhookSecret;
+    }
+
+    public void setWebhookSecret(String webhookSecret) {
+        this.webhookSecret = webhookSecret;
     }
 
     public boolean isConfigured() {

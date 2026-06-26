@@ -16,12 +16,14 @@ public class UserPrincipal implements UserDetails {
     private final String email;
     private final UserRole role;
     private final SubscriptionPlan plan;
+    private final boolean accountNonLocked;
 
-    public UserPrincipal(UUID id, String email, UserRole role, SubscriptionPlan plan) {
+    public UserPrincipal(UUID id, String email, UserRole role, SubscriptionPlan plan, boolean accountNonLocked) {
         this.id = id;
         this.email = email;
         this.role = role;
         this.plan = plan;
+        this.accountNonLocked = accountNonLocked;
     }
 
     public UUID getId() {
@@ -68,7 +70,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return accountNonLocked;
     }
 
     @Override

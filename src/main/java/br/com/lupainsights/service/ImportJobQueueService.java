@@ -22,7 +22,9 @@ import java.io.IOException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
@@ -41,6 +43,7 @@ public class ImportJobQueueService {
     private final CnpjApiProperties cnpjApiProperties;
     private final ImportJobMapper importJobMapper;
     private final ConcurrentLinkedQueue<String> fila = new ConcurrentLinkedQueue<>();
+    private final Map<String, String> jobIdPorClientIp = new ConcurrentHashMap<>();
 
     public ImportJobQueueService(ImportJobStore jobStore,
                                  CnpjImportService cnpjImportService,
@@ -62,12 +65,15 @@ public class ImportJobQueueService {
         this.importJobMapper = importJobMapper;
     }
 
-    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
+    public ImportJobResponse enfileirar(String nomeArquivo, List<ImportRow> linhas, UUID userId, String clientIp) {
         List<ImportRow> linhasPreparadas = prepararLinhas(linhas, userId);
-        validarLimites(nomeArquivo, linhasPreparadas, userId);
+        validarLimites(nomeArquivo, linhasPreparadas, userId, clientIp);
 
         ImportJob job = new ImportJob(nomeArquivo, linhasPreparadas, userId);
         jobStore.salvar(job);
+        if (clientIp != null && !clientIp.isBlank()) {
+            jobIdPorClientIp.put(job.getId(), clientIp);
+        }
         fila.offer(job.getId());
 
         log.info("Job {} enfileirado para usuário {} com {} linha(s). Posição na fila: {}",
@@ -165,7 +171,7 @@ public class ImportJobQueueService {
                 .orElseThrow(() -> new ForbiddenException("Você não tem permissão para acessar esta consulta"));
         List<ImportRow> linhas = importJobMapper.deserializarLinhasPublico(entity.getLinhasJson());
         String nome = "reprocesso-" + entity.getArquivo();
-        return enfileirar(nome, linhas, userId);
+        return enfileirar(nome, linhas, userId, null);
     }
 
     public int recuperarJobsPendentes() {
@@ -214,7 +220,7 @@ public class ImportJobQueueService {
         return linhas;
     }
 
-    private void validarLimites(String nomeArquivo, List<ImportRow> linhas, UUID userId) {
+    private void validarLimites(String nomeArquivo, List<ImportRow> linhas, UUID userId, String clientIp) {
         if (linhas.isEmpty()) {
             throw new IllegalArgumentException("O arquivo não contém linhas válidas para importação.");
         }
@@ -244,6 +250,23 @@ public class ImportJobQueueService {
             throw new IllegalStateException(
                     "Você já possui uma importação em andamento. Aguarde a conclusão antes de enviar outra.");
         }
+
+        if (clientIp != null && !clientIp.isBlank()
+                && contarAtivosPorIp(clientIp) >= securityProperties.getMaxActiveJobsPerIp()) {
+            throw new IllegalStateException(
+                    "Já existe uma importação em andamento para este endereço. Aguarde a conclusão.");
+        }
+    }
+
+    private int contarAtivosPorIp(String clientIp) {
+        return (int) jobStore.listarAtivos().stream()
+                .map(entity -> entity.getId().toString())
+                .filter(jobId -> clientIp.equals(jobIdPorClientIp.get(jobId)))
+                .count();
+    }
+
+    private void liberarClientIp(String jobId) {
+        jobIdPorClientIp.remove(jobId);
     }
 
     private void processarProximoDaFila() {
@@ -325,6 +348,7 @@ public class ImportJobQueueService {
             job.setConcluidoEm(Instant.now());
             jobStore.salvar(job);
         } finally {
+            liberarClientIp(job.getId());
             if (!fila.isEmpty()) {
                 importJobExecutor.submit(this::processarProximoDaFila);
             }

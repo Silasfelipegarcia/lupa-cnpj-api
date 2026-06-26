@@ -57,6 +57,12 @@ app:
     guest-preview-max: 1
     guest-preview-window-days: 365
     guest-preview-per-minute: 10
+    payments-per-minute: 20
+    analytics-per-minute: 60
+    password-change-per-hour: 5
+    import-per-user-per-hour: 10
+    login-failures-before-lock: 5
+    login-lock-minutes: 15
 
 management:
   endpoints:
@@ -81,6 +87,7 @@ mercadopago:
   api-public-url: ${API_PUBLIC_URL:http://localhost:8080}
   premium-price-cents: 4990
   pro-plus-price-cents: 9990
+  webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
 
 logging:
   level:
