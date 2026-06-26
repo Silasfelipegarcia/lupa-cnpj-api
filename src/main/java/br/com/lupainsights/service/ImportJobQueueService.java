@@ -12,6 +12,7 @@ import br.com.lupainsights.util.ImportLineDedupe;
 import br.com.lupainsights.model.ImportJob;
 import br.com.lupainsights.plan.UsageTrackingService;
 import br.com.lupainsights.config.CnpjApiProperties;
+import br.com.lupainsights.plan.CnpjResultMaskingService;
 import br.com.lupainsights.plan.PlanLimitsService;
 import br.com.lupainsights.repository.UserRepository;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ public class ImportJobQueueService {
     private final UserRepository userRepository;
     private final UsageTrackingService usageTrackingService;
     private final PlanLimitsService planLimitsService;
+    private final CnpjResultMaskingService maskingService;
     private final CnpjApiProperties cnpjApiProperties;
     private final ImportJobMapper importJobMapper;
     private final ConcurrentLinkedQueue<String> fila = new ConcurrentLinkedQueue<>();
@@ -52,6 +54,7 @@ public class ImportJobQueueService {
                                  UserRepository userRepository,
                                  UsageTrackingService usageTrackingService,
                                  PlanLimitsService planLimitsService,
+                                 CnpjResultMaskingService maskingService,
                                  CnpjApiProperties cnpjApiProperties,
                                  ImportJobMapper importJobMapper) {
         this.jobStore = jobStore;
@@ -61,6 +64,7 @@ public class ImportJobQueueService {
         this.userRepository = userRepository;
         this.usageTrackingService = usageTrackingService;
         this.planLimitsService = planLimitsService;
+        this.maskingService = maskingService;
         this.cnpjApiProperties = cnpjApiProperties;
         this.importJobMapper = importJobMapper;
     }
@@ -227,6 +231,7 @@ public class ImportJobQueueService {
 
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        usageTrackingService.validarImportacaoDiaria(user);
         usageTrackingService.validarLinhasPorPlano(user, linhas.size());
         usageTrackingService.validarEIncrementarBatch(userId, linhas.size());
 
@@ -408,7 +413,12 @@ public class ImportJobQueueService {
         response.setPosicaoFila(job.getStatus() == ImportJobStatus.NA_FILA
                 ? calcularPosicaoFila(job.getId()) : 0);
         response.setMensagem(job.getMensagem());
-        response.setResultados(job.getResultados());
+        UserEntity user = userRepository.findById(job.getUserId()).orElse(null);
+        if (user != null) {
+            response.setResultados(maskingService.aplicarSeNecessario(user, job.getResultados()));
+        } else {
+            response.setResultados(job.getResultados());
+        }
         response.setCreatedAt(job.getCriadoEm());
         response.setCompletedAt(job.getConcluidoEm());
         return response;

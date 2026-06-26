@@ -8,7 +8,9 @@ public record PlanLimits(
         boolean exportExcel,
         boolean filtroSomenteAtivos,
         boolean filtrosAvancados,
-        boolean dedupeHabilitado
+        boolean dedupeHabilitado,
+        boolean dadosLimitados,
+        Integer maxImportJobsPerDay
 ) {
     public boolean isUnlimitedBatch() {
         return maxBatchSearchesPerDay == null;

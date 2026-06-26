@@ -14,6 +14,9 @@ public class PlanUsageResponse {
     private boolean filtrosAvancados;
     private boolean dedupeHabilitado;
     private boolean trialDisponivel;
+    private boolean dadosLimitados;
+    private Integer maxImportJobsPerDay;
+    private int importJobsToday;
 
     public int getMaxRowsPerFile() {
         return maxRowsPerFile;
@@ -109,5 +112,29 @@ public class PlanUsageResponse {
 
     public void setTrialDisponivel(boolean trialDisponivel) {
         this.trialDisponivel = trialDisponivel;
+    }
+
+    public boolean isDadosLimitados() {
+        return dadosLimitados;
+    }
+
+    public void setDadosLimitados(boolean dadosLimitados) {
+        this.dadosLimitados = dadosLimitados;
+    }
+
+    public Integer getMaxImportJobsPerDay() {
+        return maxImportJobsPerDay;
+    }
+
+    public void setMaxImportJobsPerDay(Integer maxImportJobsPerDay) {
+        this.maxImportJobsPerDay = maxImportJobsPerDay;
+    }
+
+    public int getImportJobsToday() {
+        return importJobsToday;
+    }
+
+    public void setImportJobsToday(int importJobsToday) {
+        this.importJobsToday = importJobsToday;
     }
 }

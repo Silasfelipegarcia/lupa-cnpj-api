@@ -3,10 +3,12 @@ package br.com.lupainsights.plan;
 import br.com.lupainsights.entity.UserDailyUsageEntity;
 import br.com.lupainsights.entity.UserEntity;
 import br.com.lupainsights.repository.UserDailyUsageRepository;
+import br.com.lupainsights.repository.ImportJobRepository;
 import br.com.lupainsights.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -16,13 +18,16 @@ public class UsageTrackingService {
 
     private final UserDailyUsageRepository usageRepository;
     private final UserRepository userRepository;
+    private final ImportJobRepository importJobRepository;
     private final PlanLimitsService planLimitsService;
 
     public UsageTrackingService(UserDailyUsageRepository usageRepository,
                                 UserRepository userRepository,
+                                ImportJobRepository importJobRepository,
                                 PlanLimitsService planLimitsService) {
         this.usageRepository = usageRepository;
         this.userRepository = userRepository;
+        this.importJobRepository = importJobRepository;
         this.planLimitsService = planLimitsService;
     }
 
@@ -36,8 +41,31 @@ public class UsageTrackingService {
                 limits,
                 usage.getBatchSearches(),
                 usage.getDirectCnpjLookups(),
-                planLimitsService.isMaster(user)
+                planLimitsService.isMaster(user),
+                contarImportacoesHoje(userId)
         );
+    }
+
+    public int contarImportacoesHoje(UUID userId) {
+        Instant inicioDia = hoje().atStartOfDay(ZoneOffset.UTC).toInstant();
+        return (int) importJobRepository.countByUserIdSince(userId, inicioDia);
+    }
+
+    public void validarImportacaoDiaria(UserEntity user) {
+        if (planLimitsService.isMaster(user)) {
+            return;
+        }
+        PlanLimits limits = planLimitsService.limitesDe(user);
+        if (limits.maxImportJobsPerDay() == null) {
+            return;
+        }
+        int usadas = contarImportacoesHoje(user.getId());
+        if (usadas >= limits.maxImportJobsPerDay()) {
+            throw new IllegalStateException(String.format(
+                    "Seu plano %s permite %d importação(ões) por dia. Faça upgrade para importar mais planilhas.",
+                    planLimitsService.nomeExibicao(user.getPlan()),
+                    limits.maxImportJobsPerDay()));
+        }
     }
 
     @Transactional

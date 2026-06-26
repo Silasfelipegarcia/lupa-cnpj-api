@@ -29,4 +29,13 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
                              br.com.lupainsights.domain.SubscriptionPlan.PRO_PLUS)
             """)
     List<UserEntity> findDueForRenewal(@Param("limite") Instant limite);
+
+    @Query("""
+            SELECT u FROM UserEntity u
+            WHERE u.trialAte IS NOT NULL
+              AND u.trialAte <= :now
+              AND u.plan = br.com.lupainsights.domain.SubscriptionPlan.PREMIUM
+              AND (u.planValidUntil IS NULL OR u.planValidUntil <= :now)
+            """)
+    List<UserEntity> findTrialsExpirados(@Param("now") Instant now);
 }

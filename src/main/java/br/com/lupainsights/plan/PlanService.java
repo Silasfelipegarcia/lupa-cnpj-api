@@ -41,6 +41,9 @@ public class PlanService {
         response.setFiltrosAvancados(limits.filtrosAvancados());
         response.setDedupeHabilitado(limits.dedupeHabilitado());
         response.setTrialDisponivel(!user.isTrialUtilizado() && user.getTrialAte() == null);
+        response.setDadosLimitados(limits.dadosLimitados());
+        response.setMaxImportJobsPerDay(limits.maxImportJobsPerDay());
+        response.setImportJobsToday(snapshot.importJobsToday());
         return response;
     }
 
@@ -110,8 +113,11 @@ public class PlanService {
         }
         if (plan == SubscriptionPlan.FREE) {
             beneficios.add("Histórico de 7 dias");
+            beneficios.add("Telefone, e-mail e endereço no plano pago");
+            beneficios.add("1 importação por dia (até 5 linhas)");
         } else if (plan == SubscriptionPlan.PREMIUM) {
             beneficios.add("Histórico de 90 dias");
+            beneficios.add("7 dias grátis com cartão cadastrado");
         } else if (plan == SubscriptionPlan.PRO_PLUS) {
             beneficios.add("Histórico ilimitado");
         }
