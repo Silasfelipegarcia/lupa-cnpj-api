@@ -33,4 +33,40 @@ public interface ImportJobRepository extends JpaRepository<ImportJobEntity, UUID
 
     @Query("SELECT COUNT(j) FROM ImportJobEntity j WHERE j.userId = :userId AND j.createdAt >= :inicio")
     long countByUserIdSince(@Param("userId") UUID userId, @Param("inicio") Instant inicio);
+
+    @Query("SELECT COUNT(j) FROM ImportJobEntity j")
+    long countAllJobs();
+
+    @Query("SELECT COALESCE(SUM(j.processados), 0) FROM ImportJobEntity j")
+    long sumProcessadosAll();
+
+    @Query("SELECT COALESCE(SUM(j.sucesso), 0) FROM ImportJobEntity j")
+    long sumSucessoAll();
+
+    @Query("SELECT COALESCE(SUM(j.erros), 0) FROM ImportJobEntity j")
+    long sumErrosAll();
+
+    @Query("""
+            SELECT j.userId, COUNT(j), COALESCE(SUM(j.processados), 0)
+            FROM ImportJobEntity j WHERE j.userId IN :userIds GROUP BY j.userId
+            """)
+    List<Object[]> metricsByUserIds(@Param("userIds") List<UUID> userIds);
+
+    @Query("SELECT COUNT(j) FROM ImportJobEntity j WHERE j.userId = :userId")
+    long countByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT COALESCE(SUM(j.processados), 0) FROM ImportJobEntity j WHERE j.userId = :userId")
+    long sumProcessadosByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT COALESCE(SUM(j.sucesso), 0) FROM ImportJobEntity j WHERE j.userId = :userId")
+    long sumSucessoByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT COALESCE(SUM(j.erros), 0) FROM ImportJobEntity j WHERE j.userId = :userId")
+    long sumErrosByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT COALESCE(SUM(j.processados), 0) FROM ImportJobEntity j
+            WHERE j.userId = :userId AND j.createdAt >= :since
+            """)
+    long sumProcessadosByUserIdSince(@Param("userId") UUID userId, @Param("since") Instant since);
 }

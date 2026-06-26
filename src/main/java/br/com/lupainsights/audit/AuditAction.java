@@ -10,5 +10,6 @@ public enum AuditAction {
     CNPJ_PREVIEW,
     PRODUCT_EVENT,
     ACCESS_DENIED,
+    ADMIN_ACCESS,
     API_REQUEST
 }

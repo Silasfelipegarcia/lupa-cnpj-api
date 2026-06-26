@@ -61,6 +61,8 @@ Para o **Railway**, use `railway.env.example` → `railway.env` (gitignored) com
 | `MERCADOPAGO_ACCESS_TOKEN` | Sim (pagamentos) | `TEST-...` (teste) ou `APP_USR-...` (produção) |
 | `FRONTEND_URL` | Sim (pagamentos) | URL do frontend |
 | `API_PUBLIC_URL` | Sim (pagamentos) | URL pública da API (webhook) |
+| `NEW_RELIC_LICENSE_KEY` | Não (APM) | License key do New Relic — ativa o agente Java no container |
+| `NEW_RELIC_APP_NAME` | Não (APM) | Nome do app no painel New Relic (padrão sugerido: `lupa-cnpj-api`) |
 
 Webhook no painel MP: `{API_PUBLIC_URL}/payments/mercadopago/webhook` — configure também `MERCADOPAGO_WEBHOOK_SECRET` no Railway. Ver [CONFIGURACAO-PRODUCAO.md](../docs/CONFIGURACAO-PRODUCAO.md).
 
@@ -88,7 +90,8 @@ Vincule o MySQL ao serviço da API. Variáveis injetadas automaticamente:
 2. **Add MySQL** e vincule à API
 3. Configure `JWT_SECRET` e `ALLOWED_ORIGINS`
 4. Dockerfile ativa `production` automaticamente
-5. Valide: `GET /actuator/health` → `{"status":"UP"}`
+5. **New Relic APM** (opcional): defina `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_APP_NAME` no Railway — o agente Java só inicia quando a license key está presente
+6. Valide: `GET /actuator/health` → `{"status":"UP"}`
 
 ## Endpoints
 
