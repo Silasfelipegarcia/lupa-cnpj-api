@@ -2,7 +2,9 @@ package br.com.lupainsights.dto;
 
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.domain.UserRole;
+import br.com.lupainsights.dto.SubscriptionStatusResponse;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public class UserResponse {
@@ -11,10 +13,12 @@ public class UserResponse {
     private String nome;
     private String email;
     private String cpf;
+    private Instant createdAt;
     private UserRole role;
     private SubscriptionPlan plan;
     private String planNome;
     private PlanUsageResponse usage;
+    private SubscriptionStatusResponse subscription;
 
     public UserResponse() {
     }
@@ -58,6 +62,14 @@ public class UserResponse {
         this.cpf = cpf;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public UserRole getRole() {
         return role;
     }
@@ -88,5 +100,13 @@ public class UserResponse {
 
     public void setUsage(PlanUsageResponse usage) {
         this.usage = usage;
+    }
+
+    public SubscriptionStatusResponse getSubscription() {
+        return subscription;
+    }
+
+    public void setSubscription(SubscriptionStatusResponse subscription) {
+        this.subscription = subscription;
     }
 }

@@ -9,6 +9,8 @@ public class ChargePlanRequest {
     private String securityCode;
     /** Token de cartão novo (alternativa a cardId). */
     private String token;
+    /** Cobrança automática de renovação (sem CVV do usuário). */
+    private boolean renewal;
 
     public SubscriptionPlan getPlan() {
         return plan;
@@ -40,5 +42,13 @@ public class ChargePlanRequest {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public boolean isRenewal() {
+        return renewal;
+    }
+
+    public void setRenewal(boolean renewal) {
+        this.renewal = renewal;
     }
 }

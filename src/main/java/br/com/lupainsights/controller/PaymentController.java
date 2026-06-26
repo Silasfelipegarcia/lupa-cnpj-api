@@ -1,11 +1,14 @@
 package br.com.lupainsights.controller;
 
+import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.dto.ChargePlanRequest;
 import br.com.lupainsights.dto.ChargePlanResponse;
 import br.com.lupainsights.dto.CheckoutRequest;
 import br.com.lupainsights.dto.CheckoutResponse;
 import br.com.lupainsights.dto.PaymentConfigResponse;
 import br.com.lupainsights.dto.PaymentHistoryItemResponse;
+import br.com.lupainsights.dto.PlanQuoteResponse;
+import br.com.lupainsights.dto.SubscriptionStatusResponse;
 import br.com.lupainsights.dto.SaveCardRequest;
 import br.com.lupainsights.dto.SavedCardResponse;
 import br.com.lupainsights.payment.MercadoPagoPaymentService;
@@ -35,6 +38,11 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.criarCheckout(
                 SecurityUtils.currentUserId(),
                 request.getPlan()));
+    }
+
+    @GetMapping("/quote")
+    public ResponseEntity<PlanQuoteResponse> cotacao(@RequestParam SubscriptionPlan plan) {
+        return ResponseEntity.ok(paymentService.obterCotacao(SecurityUtils.currentUserId(), plan));
     }
 
     @GetMapping("/config")
@@ -67,6 +75,23 @@ public class PaymentController {
     @PostMapping("/charge")
     public ResponseEntity<ChargePlanResponse> cobrar(@RequestBody ChargePlanRequest request) {
         return ResponseEntity.ok(paymentService.cobrarPlano(SecurityUtils.currentUserId(), request));
+    }
+
+    @GetMapping("/subscription")
+    public ResponseEntity<SubscriptionStatusResponse> assinatura() {
+        return ResponseEntity.ok(paymentService.obterStatusAssinatura(SecurityUtils.currentUserId()));
+    }
+
+    @PostMapping("/subscription/cancel")
+    public ResponseEntity<SubscriptionStatusResponse> cancelarAssinatura() {
+        paymentService.cancelarAssinatura(SecurityUtils.currentUserId());
+        return ResponseEntity.ok(paymentService.obterStatusAssinatura(SecurityUtils.currentUserId()));
+    }
+
+    @PostMapping("/subscription/reactivate")
+    public ResponseEntity<SubscriptionStatusResponse> reativarAssinatura() {
+        paymentService.reativarAssinatura(SecurityUtils.currentUserId());
+        return ResponseEntity.ok(paymentService.obterStatusAssinatura(SecurityUtils.currentUserId()));
     }
 
     @PostMapping("/mercadopago/webhook")

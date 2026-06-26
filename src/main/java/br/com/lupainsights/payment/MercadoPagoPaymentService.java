@@ -7,12 +7,15 @@ import br.com.lupainsights.dto.ChargePlanResponse;
 import br.com.lupainsights.dto.CheckoutResponse;
 import br.com.lupainsights.dto.PaymentConfigResponse;
 import br.com.lupainsights.dto.PaymentHistoryItemResponse;
+import br.com.lupainsights.dto.PlanQuoteResponse;
+import br.com.lupainsights.dto.SubscriptionStatusResponse;
 import br.com.lupainsights.dto.SavedCardResponse;
 import br.com.lupainsights.entity.PaymentOrderEntity;
 import br.com.lupainsights.entity.UserEntity;
 import br.com.lupainsights.plan.PlanLimitsService;
 import br.com.lupainsights.repository.PaymentOrderRepository;
 import br.com.lupainsights.repository.UserRepository;
+import br.com.lupainsights.subscription.SubscriptionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -41,6 +44,7 @@ public class MercadoPagoPaymentService {
     private final UserRepository userRepository;
     private final PlanLimitsService planLimitsService;
     private final MercadoPagoCustomerService customerService;
+    private final SubscriptionService subscriptionService;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
@@ -49,12 +53,14 @@ public class MercadoPagoPaymentService {
                                      UserRepository userRepository,
                                      PlanLimitsService planLimitsService,
                                      MercadoPagoCustomerService customerService,
+                                     SubscriptionService subscriptionService,
                                      ObjectMapper objectMapper) {
         this.properties = properties;
         this.paymentOrderRepository = paymentOrderRepository;
         this.userRepository = userRepository;
         this.planLimitsService = planLimitsService;
         this.customerService = customerService;
+        this.subscriptionService = subscriptionService;
         this.objectMapper = objectMapper;
         this.restClient = RestClient.builder()
                 .baseUrl(properties.getApiBaseUrl())
@@ -74,9 +80,8 @@ public class MercadoPagoPaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
 
         UUID orderId = UUID.randomUUID();
-        int amountCents = plan == SubscriptionPlan.PREMIUM
-                ? properties.getPremiumPriceCents()
-                : properties.getProPlusPriceCents();
+        int amountCents = subscriptionService.calcularValorCobranca(user, plan);
+        boolean upgrade = subscriptionService.ehUpgradeProporcional(user, plan);
 
         PaymentOrderEntity order = new PaymentOrderEntity();
         order.setId(orderId);
@@ -88,14 +93,19 @@ public class MercadoPagoPaymentService {
         order.setUpdatedAt(Instant.now());
         paymentOrderRepository.save(order);
 
-        Map<String, Object> body = montarPreferencia(user, orderId, plan, amountCents);
-        JsonNode response = restClient.post()
-                .uri("/checkout/preferences")
-                .header("Authorization", "Bearer " + properties.getAccessToken())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
+        Map<String, Object> body = montarPreferencia(user, orderId, plan, amountCents, upgrade);
+        JsonNode response;
+        try {
+            response = restClient.post()
+                    .uri("/checkout/preferences")
+                    .header("Authorization", "Bearer " + properties.getAccessToken())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            throw customerService.traduzirErro("Não foi possível iniciar o checkout", e);
+        }
 
         if (response == null || !response.has("id")) {
             throw new IllegalStateException("Falha ao criar preferência no Mercado Pago");
@@ -111,7 +121,20 @@ public class MercadoPagoPaymentService {
         checkout.setPreferenceId(preferenceId);
         checkout.setInitPoint(response.path("init_point").asText(null));
         checkout.setSandboxInitPoint(response.path("sandbox_init_point").asText(null));
+        checkout.setAmountCents(amountCents);
+        checkout.setAmountLabel(formatarValor(amountCents));
+        checkout.setUpgrade(upgrade);
         return checkout;
+    }
+
+    public PlanQuoteResponse obterCotacao(UUID userId, SubscriptionPlan plan) {
+        if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
+            throw new IllegalArgumentException("Plano inválido para cotação");
+        }
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        subscriptionService.expirarSeNecessario(user);
+        return subscriptionService.montarCotacao(user, plan);
     }
 
     public PaymentConfigResponse obterConfig() {
@@ -174,7 +197,11 @@ public class MercadoPagoPaymentService {
             if (response == null || !response.has("id")) {
                 throw new IllegalStateException("Não foi possível salvar o cartão. Verifique os dados e tente novamente.");
             }
-            return mapearCartao(response);
+            SavedCardResponse card = mapearCartao(response);
+            if (user.getDefaultCardId() == null || user.getDefaultCardId().isBlank()) {
+                subscriptionService.definirCartaoPadrao(user, card.getId());
+            }
+            return card;
         } catch (RestClientResponseException e) {
             throw customerService.traduzirErro("Não foi possível salvar o cartão", e);
         }
@@ -196,6 +223,11 @@ public class MercadoPagoPaymentService {
                 .header("Authorization", "Bearer " + properties.getAccessToken())
                 .retrieve()
                 .toBodilessEntity();
+
+        if (cardId.equals(user.getDefaultCardId())) {
+            user.setDefaultCardId(null);
+            userRepository.save(user);
+        }
     }
 
     @Transactional
@@ -208,13 +240,14 @@ public class MercadoPagoPaymentService {
             throw new IllegalArgumentException("Plano inválido para cobrança");
         }
 
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        boolean cartaoSalvo = usaCartaoSalvo(request);
+        UserEntity user = cartaoSalvo
+                ? customerService.obterOuCriar(userId)
+                : userRepository.findById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
 
         String paymentToken = resolverTokenPagamento(user, request);
-        int amountCents = plan == SubscriptionPlan.PREMIUM
-                ? properties.getPremiumPriceCents()
-                : properties.getProPlusPriceCents();
+        int amountCents = subscriptionService.calcularValorCobranca(user, plan);
 
         UUID orderId = UUID.randomUUID();
         PaymentOrderEntity order = new PaymentOrderEntity();
@@ -225,29 +258,33 @@ public class MercadoPagoPaymentService {
         order.setAmountCents(amountCents);
         order.setCreatedAt(Instant.now());
         order.setUpdatedAt(Instant.now());
+        order.setRenewal(request.isRenewal());
         paymentOrderRepository.save(order);
 
-        Map<String, Object> payer = new HashMap<>();
-        payer.put("email", user.getEmail());
-        payer.put("identification", Map.of("type", "CPF", "number", user.getCpf()));
+        Map<String, Object> payer = montarPayer(user, cartaoSalvo);
 
         Map<String, Object> body = new HashMap<>();
         body.put("transaction_amount", amountCents / 100.0);
         body.put("token", paymentToken);
-        body.put("description", plan == SubscriptionPlan.PREMIUM ? "Lupa Insights Prospecção" : "Lupa Insights Growth");
+        body.put("description", descricaoPagamento(plan, subscriptionService.ehUpgradeProporcional(user, plan)));
         body.put("installments", 1);
         body.put("external_reference", orderId.toString());
         body.put("payer", payer);
-        body.put("notification_url", properties.getApiPublicUrl().replaceAll("/$", "") + "/payments/mercadopago/webhook");
+        adicionarNotificationUrlSeAplicavel(body);
 
-        JsonNode payment = restClient.post()
-                .uri("/v1/payments")
-                .header("Authorization", "Bearer " + properties.getAccessToken())
-                .header("X-Idempotency-Key", orderId.toString())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
+        JsonNode payment;
+        try {
+            payment = restClient.post()
+                    .uri("/v1/payments")
+                    .header("Authorization", "Bearer " + properties.getAccessToken())
+                    .header("X-Idempotency-Key", orderId.toString())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            throw customerService.traduzirErro("Não foi possível processar o pagamento", e);
+        }
 
         if (payment == null) {
             throw new IllegalStateException("Falha ao processar pagamento");
@@ -259,11 +296,13 @@ public class MercadoPagoPaymentService {
         order.setMpPaymentId(paymentId);
         order.setStatus(status);
         order.setUpdatedAt(Instant.now());
+        if ("APPROVED".equalsIgnoreCase(status)) {
+            order.setPaidAt(Instant.now());
+        }
         paymentOrderRepository.save(order);
 
         if ("APPROVED".equalsIgnoreCase(status)) {
-            user.setPlan(plan);
-            userRepository.save(user);
+            aplicarPagamentoAprovado(user, plan, order, request.getCardId());
         }
 
         ChargePlanResponse response = new ChargePlanResponse();
@@ -274,6 +313,76 @@ public class MercadoPagoPaymentService {
         return response;
     }
 
+    @Transactional
+    public void cobrarRenovacaoAutomatica(UserEntity user) {
+        if (user.getDefaultCardId() == null || user.getDefaultCardId().isBlank()) {
+            log.warn("Renovação ignorada para {}: sem cartão padrão", user.getEmail());
+            return;
+        }
+        ChargePlanRequest request = new ChargePlanRequest();
+        request.setPlan(user.getPlan());
+        request.setCardId(user.getDefaultCardId());
+        request.setRenewal(true);
+        try {
+            cobrarPlano(user.getId(), request);
+        } catch (Exception e) {
+            log.warn("Renovação automática falhou para {}: {}", user.getEmail(), e.getMessage());
+        }
+    }
+
+    public SubscriptionStatusResponse obterStatusAssinatura(UUID userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        subscriptionService.expirarSeNecessario(user);
+        return subscriptionService.montarStatus(user);
+    }
+
+    @Transactional
+    public UserEntity cancelarAssinatura(UUID userId) {
+        return subscriptionService.cancelar(userId);
+    }
+
+    @Transactional
+    public UserEntity reativarAssinatura(UUID userId) {
+        return subscriptionService.reativar(userId);
+    }
+
+    private void aplicarPagamentoAprovado(UserEntity user, SubscriptionPlan plan,
+                                          PaymentOrderEntity order, String cardId) {
+        Instant paidAt = order.getPaidAt() != null ? order.getPaidAt() : Instant.now();
+        if (order.isRenewal()) {
+            subscriptionService.ativarPeriodoPago(user, plan, paidAt, true);
+        } else if (subscriptionService.ehUpgradeProporcional(user, plan)) {
+            subscriptionService.aplicarUpgrade(user, plan);
+        } else {
+            subscriptionService.ativarPeriodoPago(user, plan, paidAt, false);
+        }
+        if (cardId != null && !cardId.isBlank()) {
+            subscriptionService.definirCartaoPadrao(user, cardId);
+        }
+        log.info("Assinatura {} ativada/renovada para {} até {}",
+                plan, user.getEmail(), user.getPlanValidUntil());
+    }
+
+    private boolean usaCartaoSalvo(ChargePlanRequest request) {
+        if (request.getCardId() != null && !request.getCardId().isBlank()) {
+            return true;
+        }
+        return request.getToken() != null && !request.getToken().isBlank();
+    }
+
+    private Map<String, Object> montarPayer(UserEntity user, boolean cartaoSalvo) {
+        Map<String, Object> payer = new HashMap<>();
+        payer.put("email", user.getEmail());
+        if (cartaoSalvo && user.getMpCustomerId() != null && !user.getMpCustomerId().isBlank()) {
+            payer.put("type", "customer");
+            payer.put("id", user.getMpCustomerId());
+        } else {
+            payer.put("identification", Map.of("type", "CPF", "number", user.getCpf()));
+        }
+        return payer;
+    }
+
     private String resolverTokenPagamento(UserEntity user, ChargePlanRequest request) {
         if (request.getToken() != null && !request.getToken().isBlank()) {
             return request.getToken();
@@ -281,24 +390,35 @@ public class MercadoPagoPaymentService {
         if (request.getCardId() == null || request.getCardId().isBlank()) {
             throw new IllegalArgumentException("Informe o cartão ou cadastre um novo");
         }
-        if (request.getSecurityCode() == null || request.getSecurityCode().isBlank()) {
+        if (!request.isRenewal()
+                && (request.getSecurityCode() == null || request.getSecurityCode().isBlank())) {
             throw new IllegalArgumentException("Informe o CVV do cartão");
         }
         if (user.getMpCustomerId() == null || user.getMpCustomerId().isBlank()) {
             throw new IllegalArgumentException("Cadastre um cartão antes de assinar");
         }
 
-        Map<String, Object> body = Map.of(
-                "card_id", request.getCardId(),
-                "security_code", request.getSecurityCode());
+        Map<String, Object> body = new HashMap<>();
+        body.put("card_id", request.getCardId());
+        body.put("customer_id", user.getMpCustomerId());
+        if (request.getSecurityCode() != null && !request.getSecurityCode().isBlank()) {
+            body.put("security_code", request.getSecurityCode());
+        }
 
-        JsonNode tokenResponse = restClient.post()
-                .uri("/v1/card_tokens")
-                .header("Authorization", "Bearer " + properties.getAccessToken())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
+        JsonNode tokenResponse;
+        try {
+            tokenResponse = restClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/card_tokens")
+                            .queryParam("public_key", properties.getPublicKey())
+                            .build())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            throw customerService.traduzirErro("Não foi possível validar o cartão", e);
+        }
 
         if (tokenResponse == null || !tokenResponse.has("id")) {
             throw new IllegalStateException("Não foi possível validar o cartão. Verifique o CVV.");
@@ -391,20 +511,35 @@ public class MercadoPagoPaymentService {
         order.setMpPaymentId(paymentId);
         order.setStatus(status.toUpperCase());
         order.setUpdatedAt(Instant.now());
+        if ("APPROVED".equalsIgnoreCase(status)) {
+            order.setPaidAt(Instant.now());
+        }
         paymentOrderRepository.save(order);
 
         if ("APPROVED".equalsIgnoreCase(status)) {
             UserEntity user = userRepository.findById(order.getUserId())
                     .orElseThrow(() -> new IllegalStateException("Usuário do pagamento não encontrado"));
-            user.setPlan(order.getPlan());
-            userRepository.save(user);
-            log.info("Plano {} ativado para usuário {} via Mercado Pago", order.getPlan(), user.getEmail());
+            aplicarPagamentoAprovado(user, order.getPlan(), order, null);
         }
     }
 
-    private Map<String, Object> montarPreferencia(UserEntity user, UUID orderId, SubscriptionPlan plan, int amountCents) {
-        String titulo = plan == SubscriptionPlan.PREMIUM ? "Lupa Insights Premium" : "Lupa Insights Pro+";
+    private void adicionarNotificationUrlSeAplicavel(Map<String, Object> body) {
+        String base = properties.getApiPublicUrl();
+        if (base == null || base.isBlank()) {
+            return;
+        }
+        String webhookUrl = base.replaceAll("/$", "") + "/payments/mercadopago/webhook";
+        if (webhookUrl.contains("localhost") || webhookUrl.contains("127.0.0.1")) {
+            return;
+        }
+        body.put("notification_url", webhookUrl);
+    }
+
+    private Map<String, Object> montarPreferencia(UserEntity user, UUID orderId, SubscriptionPlan plan,
+                                                  int amountCents, boolean upgrade) {
+        String titulo = descricaoPagamento(plan, upgrade);
         String frontend = properties.getFrontendUrl().replaceAll("/$", "");
+        boolean frontendLocal = frontend.contains("localhost") || frontend.contains("127.0.0.1");
 
         Map<String, Object> item = Map.of(
                 "title", titulo,
@@ -422,13 +557,26 @@ public class MercadoPagoPaymentService {
         body.put("items", java.util.List.of(item));
         body.put("payer", Map.of("email", user.getEmail()));
         body.put("back_urls", backUrls);
-        body.put("auto_return", "approved");
+        if (!frontendLocal) {
+            body.put("auto_return", "approved");
+        }
         body.put("external_reference", orderId.toString());
-        body.put("notification_url", properties.getApiPublicUrl().replaceAll("/$", "") + "/payments/mercadopago/webhook");
+        adicionarNotificationUrlSeAplicavel(body);
         body.put("payment_methods", Map.of(
-                "excluded_payment_types", java.util.List.of(),
+                "excluded_payment_types", java.util.List.of(
+                        Map.of("id", "ticket"),
+                        Map.of("id", "atm"),
+                        Map.of("id", "bank_transfer")
+                ),
                 "installments", 1
         ));
         return body;
+    }
+
+    private String descricaoPagamento(SubscriptionPlan plan, boolean upgrade) {
+        if (upgrade) {
+            return "Upgrade Lupa Insights Growth (proporcional)";
+        }
+        return plan == SubscriptionPlan.PREMIUM ? "Lupa Insights Prospecção" : "Lupa Insights Growth";
     }
 }

@@ -19,6 +19,7 @@ import br.com.lupainsights.service.CnpjDirectConsultaService;
 import br.com.lupainsights.service.CnpjImportService;
 import br.com.lupainsights.service.ImportJobQueueService;
 import br.com.lupainsights.service.TrialService;
+import br.com.lupainsights.subscription.SubscriptionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
@@ -57,6 +58,7 @@ public class CnpjImportController {
     private final UserRepository userRepository;
     private final PlanLimitsService planLimitsService;
     private final TrialService trialService;
+    private final SubscriptionService subscriptionService;
 
     public CnpjImportController(CnpjImportService cnpjImportService,
                                 ImportJobQueueService jobQueueService,
@@ -65,7 +67,8 @@ public class CnpjImportController {
                                 CnpjDirectConsultaService directConsultaService,
                                 UserRepository userRepository,
                                 PlanLimitsService planLimitsService,
-                                TrialService trialService) {
+                                TrialService trialService,
+                                SubscriptionService subscriptionService) {
         this.cnpjImportService = cnpjImportService;
         this.jobQueueService = jobQueueService;
         this.templateWriter = templateWriter;
@@ -74,6 +77,7 @@ public class CnpjImportController {
         this.userRepository = userRepository;
         this.planLimitsService = planLimitsService;
         this.trialService = trialService;
+        this.subscriptionService = subscriptionService;
     }
 
     @GetMapping("/config")
@@ -81,6 +85,7 @@ public class CnpjImportController {
         UUID userId = SecurityUtils.currentUserId();
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        subscriptionService.expirarSeNecessario(user);
         trialService.expirarTrialSeNecessario(user);
 
         PlanLimits limits = planLimitsService.limitesDe(user);

@@ -1,6 +1,7 @@
 package br.com.lupainsights.controller;
 
 import br.com.lupainsights.dto.AuthResponse;
+import br.com.lupainsights.dto.ChangePasswordRequest;
 import br.com.lupainsights.dto.LoginRequest;
 import br.com.lupainsights.dto.RegisterRequest;
 import br.com.lupainsights.dto.UserResponse;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,5 +39,11 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me() {
         return ResponseEntity.ok(authService.obterUsuario(SecurityUtils.currentUserId()));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<Void> alterarSenha(@RequestBody ChangePasswordRequest request) {
+        authService.alterarSenha(SecurityUtils.currentUserId(), request);
+        return ResponseEntity.noContent().build();
     }
 }

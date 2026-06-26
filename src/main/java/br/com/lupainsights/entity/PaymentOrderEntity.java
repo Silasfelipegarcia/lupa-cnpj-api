@@ -43,6 +43,12 @@ public class PaymentOrderEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "paid_at")
+    private Instant paidAt;
+
+    @Column(nullable = false)
+    private boolean renewal = false;
+
     public UUID getId() {
         return id;
     }
@@ -113,5 +119,21 @@ public class PaymentOrderEntity {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getPaidAt() {
+        return paidAt;
+    }
+
+    public void setPaidAt(Instant paidAt) {
+        this.paidAt = paidAt;
+    }
+
+    public boolean isRenewal() {
+        return renewal;
+    }
+
+    public void setRenewal(boolean renewal) {
+        this.renewal = renewal;
     }
 }

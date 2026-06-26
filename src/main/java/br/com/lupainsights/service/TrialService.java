@@ -39,11 +39,17 @@ public class TrialService {
         if (user.getTrialAte() == null) {
             return;
         }
-        if (Instant.now().isAfter(user.getTrialAte()) && user.getPlan() == SubscriptionPlan.PREMIUM) {
-            user.setPlan(SubscriptionPlan.FREE);
+        if (!Instant.now().isAfter(user.getTrialAte()) || user.getPlan() != SubscriptionPlan.PREMIUM) {
+            return;
+        }
+        if (user.getPlanValidUntil() != null && !Instant.now().isAfter(user.getPlanValidUntil())) {
             user.setTrialAte(null);
             userRepository.save(user);
+            return;
         }
+        user.setPlan(SubscriptionPlan.FREE);
+        user.setTrialAte(null);
+        userRepository.save(user);
     }
 
     public boolean trialDisponivel(UserEntity user) {

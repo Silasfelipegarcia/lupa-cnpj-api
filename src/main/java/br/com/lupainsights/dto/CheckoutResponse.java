@@ -6,6 +6,9 @@ public class CheckoutResponse {
     private String preferenceId;
     private String initPoint;
     private String sandboxInitPoint;
+    private int amountCents;
+    private String amountLabel;
+    private boolean upgrade;
 
     public String getOrderId() {
         return orderId;
@@ -37,5 +40,29 @@ public class CheckoutResponse {
 
     public void setSandboxInitPoint(String sandboxInitPoint) {
         this.sandboxInitPoint = sandboxInitPoint;
+    }
+
+    public int getAmountCents() {
+        return amountCents;
+    }
+
+    public void setAmountCents(int amountCents) {
+        this.amountCents = amountCents;
+    }
+
+    public String getAmountLabel() {
+        return amountLabel;
+    }
+
+    public void setAmountLabel(String amountLabel) {
+        this.amountLabel = amountLabel;
+    }
+
+    public boolean isUpgrade() {
+        return upgrade;
+    }
+
+    public void setUpgrade(boolean upgrade) {
+        this.upgrade = upgrade;
     }
 }

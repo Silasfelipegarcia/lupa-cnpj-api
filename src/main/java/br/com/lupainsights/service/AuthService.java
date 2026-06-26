@@ -3,6 +3,7 @@ package br.com.lupainsights.service;
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.domain.UserRole;
 import br.com.lupainsights.dto.AuthResponse;
+import br.com.lupainsights.dto.ChangePasswordRequest;
 import br.com.lupainsights.dto.LoginRequest;
 import br.com.lupainsights.dto.RegisterRequest;
 import br.com.lupainsights.dto.UserResponse;
@@ -10,9 +11,11 @@ import br.com.lupainsights.entity.UserEntity;
 import br.com.lupainsights.plan.PlanLimitsService;
 import br.com.lupainsights.plan.PlanService;
 import br.com.lupainsights.repository.UserRepository;
+import br.com.lupainsights.subscription.SubscriptionService;
 import br.com.lupainsights.util.CpfValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Locale;
@@ -27,19 +30,22 @@ public class AuthService {
     private final PlanService planService;
     private final PlanLimitsService planLimitsService;
     private final TrialService trialService;
+    private final SubscriptionService subscriptionService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        PlanService planService,
                        PlanLimitsService planLimitsService,
-                       TrialService trialService) {
+                       TrialService trialService,
+                       SubscriptionService subscriptionService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.planService = planService;
         this.planLimitsService = planLimitsService;
         this.trialService = trialService;
+        this.subscriptionService = subscriptionService;
     }
 
     public AuthResponse registrar(RegisterRequest request) {
@@ -85,14 +91,39 @@ public class AuthService {
         }
 
         trialService.expirarTrialSeNecessario(user);
+        subscriptionService.expirarSeNecessario(user);
         return montarAuthResponse(user);
     }
 
     public UserResponse obterUsuario(UUID userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        subscriptionService.expirarSeNecessario(user);
         trialService.expirarTrialSeNecessario(user);
         return toUserResponse(user);
+    }
+
+    @Transactional
+    public void alterarSenha(UUID userId, ChangePasswordRequest request) {
+        if (request.getSenhaAtual() == null || request.getSenhaAtual().isBlank()) {
+            throw new IllegalArgumentException("Informe a senha atual");
+        }
+        if (request.getSenhaNova() == null || request.getSenhaNova().length() < 8) {
+            throw new IllegalArgumentException("A nova senha deve ter pelo menos 8 caracteres");
+        }
+        if (request.getSenhaNova().equals(request.getSenhaAtual())) {
+            throw new IllegalArgumentException("A nova senha deve ser diferente da atual");
+        }
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        if (!passwordEncoder.matches(request.getSenhaAtual(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Senha atual incorreta");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getSenhaNova()));
+        userRepository.save(user);
     }
 
     private void validarRegistro(RegisterRequest request) {
@@ -118,10 +149,15 @@ public class AuthService {
 
     private UserResponse toUserResponse(UserEntity user) {
         UserResponse response = new UserResponse(user.getId(), user.getNome(), user.getEmail(), user.getCpf());
+        response.setCreatedAt(user.getCreatedAt());
         response.setRole(user.getRole());
-        response.setPlan(user.getPlan());
-        response.setPlanNome(planLimitsService.isMaster(user) ? "Master" : planLimitsService.nomeExibicao(user.getPlan()));
+        SubscriptionPlan planoEfetivo = subscriptionService.resolverPlanoEfetivo(user);
+        response.setPlan(planoEfetivo);
+        response.setPlanNome(planLimitsService.isMaster(user)
+                ? "Master"
+                : planLimitsService.nomeExibicao(planoEfetivo));
         response.setUsage(planService.montarUsage(user));
+        response.setSubscription(subscriptionService.montarStatus(user));
         return response;
     }
 

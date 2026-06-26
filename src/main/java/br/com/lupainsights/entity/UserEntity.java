@@ -54,6 +54,18 @@ public class UserEntity {
     @Column(name = "mp_customer_id", length = 100)
     private String mpCustomerId;
 
+    @Column(name = "plan_valid_until")
+    private Instant planValidUntil;
+
+    @Column(name = "plan_cancelled_at")
+    private Instant planCancelledAt;
+
+    @Column(name = "auto_renew", nullable = false)
+    private boolean autoRenew = false;
+
+    @Column(name = "default_card_id", length = 50)
+    private String defaultCardId;
+
     public UUID getId() {
         return id;
     }
@@ -148,5 +160,37 @@ public class UserEntity {
 
     public void setMpCustomerId(String mpCustomerId) {
         this.mpCustomerId = mpCustomerId;
+    }
+
+    public Instant getPlanValidUntil() {
+        return planValidUntil;
+    }
+
+    public void setPlanValidUntil(Instant planValidUntil) {
+        this.planValidUntil = planValidUntil;
+    }
+
+    public Instant getPlanCancelledAt() {
+        return planCancelledAt;
+    }
+
+    public void setPlanCancelledAt(Instant planCancelledAt) {
+        this.planCancelledAt = planCancelledAt;
+    }
+
+    public boolean isAutoRenew() {
+        return autoRenew;
+    }
+
+    public void setAutoRenew(boolean autoRenew) {
+        this.autoRenew = autoRenew;
+    }
+
+    public String getDefaultCardId() {
+        return defaultCardId;
+    }
+
+    public void setDefaultCardId(String defaultCardId) {
+        this.defaultCardId = defaultCardId;
     }
 }
