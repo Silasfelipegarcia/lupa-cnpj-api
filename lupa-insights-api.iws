@@ -4,7 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="140ee35c-041a-4306-8394-1f0e88491c60" name="Changes" comment="" />
+    <list default="true" id="140ee35c-041a-4306-8394-1f0e88491c60" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/railway.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/railway.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/br/com/lupainsights/config/JwtProperties.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/br/com/lupainsights/config/JwtProperties.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application-production.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application-production.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.yml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

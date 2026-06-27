@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class JwtProperties {
 
     private String secret = "dev-secret-change-in-production-min-32-chars";
-    private int expirationHours = 24;
+    private int expirationHours = 8;
 
     public String getSecret() {
         return secret;
