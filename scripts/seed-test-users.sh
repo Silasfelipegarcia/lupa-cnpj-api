@@ -41,6 +41,11 @@ fi
 
 echo ""
 echo "Usuários criados/atualizados. Ver docs/USUARIOS-TESTE.md"
+if [[ "$MODE" != "--local" ]]; then
+  echo ""
+  echo "AVISO: em produção use a migration V13 (deploy Flyway), não este script." >&2
+  echo "       Este script reaplica a senha antiga do V8 (Lupa@Test2026)." >&2
+fi
 mysql_query() {
   if [[ "$MODE" == "--local" ]]; then
     mysql -u "${DB_USERNAME:-root}" ${DB_PASSWORD:+-p"$DB_PASSWORD"} "${DB_NAME:-lupainsights}" -e "$1"

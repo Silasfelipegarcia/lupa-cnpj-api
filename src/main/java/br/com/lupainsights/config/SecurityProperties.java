@@ -22,6 +22,8 @@ public class SecurityProperties {
     private int paymentsPerMinute = 20;
     private int analyticsPerMinute = 60;
     private int passwordChangePerHour = 5;
+    private int passwordResetForgotPerHour = 3;
+    private int passwordResetPerMinute = 10;
     private int importPerUserPerHour = 10;
     private int loginFailuresBeforeLock = 5;
     private int loginLockMinutes = 15;
@@ -30,6 +32,7 @@ public class SecurityProperties {
     private int readPerMinute = 60;
     private int consultaPerMinute = 30;
     private int adminPerMinute = 30;
+    private int adminBootstrapPerHour = 3;
     private String redisUrl = "";
 
     public int getImportPerHour() {
@@ -168,6 +171,22 @@ public class SecurityProperties {
         this.passwordChangePerHour = passwordChangePerHour;
     }
 
+    public int getPasswordResetForgotPerHour() {
+        return passwordResetForgotPerHour;
+    }
+
+    public void setPasswordResetForgotPerHour(int passwordResetForgotPerHour) {
+        this.passwordResetForgotPerHour = passwordResetForgotPerHour;
+    }
+
+    public int getPasswordResetPerMinute() {
+        return passwordResetPerMinute;
+    }
+
+    public void setPasswordResetPerMinute(int passwordResetPerMinute) {
+        this.passwordResetPerMinute = passwordResetPerMinute;
+    }
+
     public int getImportPerUserPerHour() {
         return importPerUserPerHour;
     }
@@ -230,6 +249,14 @@ public class SecurityProperties {
 
     public void setAdminPerMinute(int adminPerMinute) {
         this.adminPerMinute = adminPerMinute;
+    }
+
+    public int getAdminBootstrapPerHour() {
+        return adminBootstrapPerHour;
+    }
+
+    public void setAdminBootstrapPerHour(int adminBootstrapPerHour) {
+        this.adminBootstrapPerHour = adminBootstrapPerHour;
     }
 
     public String getRedisUrl() {

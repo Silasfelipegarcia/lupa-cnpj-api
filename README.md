@@ -42,8 +42,12 @@ API em `http://localhost:8080`.
 | `ALLOWED_ORIGINS` | localhost + vercel | CORS |
 | `MERCADOPAGO_PUBLIC_KEY` | — | Public Key (TEST local / APP_USR produção) |
 | `MERCADOPAGO_ACCESS_TOKEN` | — | Access Token (TEST local / APP_USR produção) |
-| `FRONTEND_URL` | `http://localhost:4200` | Redirects do checkout |
+| `FRONTEND_URL` | `http://localhost:4200` | Redirects do checkout e link de reset de senha |
 | `API_PUBLIC_URL` | `http://localhost:8080` | Webhook MP |
+| `RESEND_API_KEY` | — | API key Resend (reset de senha por e-mail) |
+| `EMAIL_FROM` | `noreply@lupacnpjs.com.br` | Remetente dos e-mails transacionais |
+| `EMAIL_FROM_NAME` | `Lupa Insights` | Nome exibido no remetente |
+| `EMAIL_ENABLED` | `true` | `false` em dev loga o link no console sem enviar |
 
 Veja `.env.example` — copie para `.env` e use credenciais de **teste** do painel Mercado Pago.
 
@@ -59,8 +63,11 @@ Para o **Railway**, use `railway.env.example` → `railway.env` (gitignored) com
 | `CNPJ_WS_TOKEN` | Não | Token API comercial |
 | `MERCADOPAGO_PUBLIC_KEY` | Sim (pagamentos) | `TEST-...` (teste) ou `APP_USR-...` (produção) |
 | `MERCADOPAGO_ACCESS_TOKEN` | Sim (pagamentos) | `TEST-...` (teste) ou `APP_USR-...` (produção) |
-| `FRONTEND_URL` | Sim (pagamentos) | URL do frontend |
+| `FRONTEND_URL` | Sim (pagamentos + reset) | URL do frontend |
 | `API_PUBLIC_URL` | Sim (pagamentos) | URL pública da API (webhook) |
+| `RESEND_API_KEY` | Sim (reset de senha) | API key Resend — verificar domínio no painel |
+| `EMAIL_FROM` | Sim (reset de senha) | Ex.: `noreply@lupacnpjs.com.br` |
+| `EMAIL_FROM_NAME` | Não | Nome do remetente (padrão: Lupa Insights) |
 | `NEW_RELIC_LICENSE_KEY` | Não (APM) | License key do New Relic — ativa o agente Java no container |
 | `NEW_RELIC_APP_NAME` | Não (APM) | Nome do app no painel New Relic (padrão sugerido: `lupa-cnpj-api`) |
 
@@ -101,7 +108,10 @@ Vincule o MySQL ao serviço da API. Variáveis injetadas automaticamente:
 |--------|------|------|-----------|
 | POST | `/auth/register` | Não | Cadastro → 201 + token |
 | POST | `/auth/login` | Não | Login |
+| POST | `/auth/forgot-password` | Não | Solicita e-mail de reset (sempre 200) |
+| POST | `/auth/reset-password` | Não | Redefine senha com token do e-mail |
 | GET | `/auth/me` | Sim | Perfil |
+| PUT | `/auth/password` | Sim | Alterar senha (logado) |
 
 ### CNPJ (requer JWT)
 

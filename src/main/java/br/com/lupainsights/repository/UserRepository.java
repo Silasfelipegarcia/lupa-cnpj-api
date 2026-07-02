@@ -18,6 +18,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
     Optional<UserEntity> findByEmailIgnoreCase(String email);
 
+    Optional<UserEntity> findByPasswordResetTokenHash(String passwordResetTokenHash);
+
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByCpf(String cpf);

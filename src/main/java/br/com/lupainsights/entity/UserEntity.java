@@ -72,6 +72,12 @@ public class UserEntity {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    @Column(name = "password_reset_token_hash", length = 64)
+    private String passwordResetTokenHash;
+
+    @Column(name = "password_reset_expires_at")
+    private Instant passwordResetExpiresAt;
+
     public UUID getId() {
         return id;
     }
@@ -218,5 +224,27 @@ public class UserEntity {
 
     public boolean isContaBloqueada() {
         return lockedUntil != null && Instant.now().isBefore(lockedUntil);
+    }
+
+    public String getPasswordResetTokenHash() {
+        return passwordResetTokenHash;
+    }
+
+    public void setPasswordResetTokenHash(String passwordResetTokenHash) {
+        this.passwordResetTokenHash = passwordResetTokenHash;
+    }
+
+    public Instant getPasswordResetExpiresAt() {
+        return passwordResetExpiresAt;
+    }
+
+    public void setPasswordResetExpiresAt(Instant passwordResetExpiresAt) {
+        this.passwordResetExpiresAt = passwordResetExpiresAt;
+    }
+
+    public boolean isPasswordResetTokenValido() {
+        return passwordResetTokenHash != null
+                && passwordResetExpiresAt != null
+                && Instant.now().isBefore(passwordResetExpiresAt);
     }
 }

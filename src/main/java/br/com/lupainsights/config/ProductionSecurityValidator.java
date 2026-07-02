@@ -1,5 +1,7 @@
 package br.com.lupainsights.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
@@ -10,6 +12,7 @@ import java.util.Arrays;
 @Component
 public class ProductionSecurityValidator {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductionSecurityValidator.class);
     private static final String DEV_JWT_SECRET = "dev-secret-change-in-production-min-32-chars";
 
     private final Environment environment;
@@ -39,8 +42,9 @@ public class ProductionSecurityValidator {
         if (mercadoPagoProperties.isConfigured()
                 && (mercadoPagoProperties.getWebhookSecret() == null
                 || mercadoPagoProperties.getWebhookSecret().isBlank())) {
-            throw new IllegalStateException(
-                    "Produção: MERCADOPAGO_WEBHOOK_SECRET é obrigatório quando pagamentos estão configurados.");
+            log.error(
+                    "Produção: MERCADOPAGO_WEBHOOK_SECRET ausente com pagamentos configurados — "
+                            + "a API sobe, mas webhooks do Mercado Pago serão rejeitados até configurar o segredo.");
         }
     }
 

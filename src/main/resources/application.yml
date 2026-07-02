@@ -60,6 +60,8 @@ app:
     payments-per-minute: 20
     analytics-per-minute: 60
     password-change-per-hour: 5
+    password-reset-forgot-per-hour: 3
+    password-reset-per-minute: 10
     import-per-user-per-hour: 10
     login-failures-before-lock: 5
     login-lock-minutes: 15
@@ -68,7 +70,19 @@ app:
     read-per-minute: 60
     consulta-per-minute: 30
     admin-per-minute: 30
+    admin-bootstrap-per-hour: 3
     redis-url: ${REDIS_URL:}
+
+  admin-bootstrap:
+    secret: ${ADMIN_BOOTSTRAP_SECRET:}
+
+  email:
+    enabled: ${EMAIL_ENABLED:true}
+    resend-api-key: ${RESEND_API_KEY:}
+    from: ${EMAIL_FROM:noreply@lupacnpjs.com.br}
+    from-name: ${EMAIL_FROM_NAME:Lupa Insights}
+    frontend-url: ${FRONTEND_URL:http://localhost:4200}
+    reset-token-ttl-hours: 1
 
 management:
   endpoints:

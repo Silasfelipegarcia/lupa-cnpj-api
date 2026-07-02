@@ -100,6 +100,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && path.matches("/auth/(login|register)")) {
             return new RateLimitRule(securityProperties.getAuthPerMinute(), MINUTE_MS, 60, "auth");
         }
+        if ("POST".equalsIgnoreCase(method) && path.equals("/auth/forgot-password")) {
+            return new RateLimitRule(securityProperties.getPasswordResetForgotPerHour(), HOUR_MS, 3600, "forgot-password");
+        }
+        if ("POST".equalsIgnoreCase(method) && path.equals("/auth/reset-password")) {
+            return new RateLimitRule(securityProperties.getPasswordResetPerMinute(), MINUTE_MS, 60, "reset-password");
+        }
+        if ("POST".equalsIgnoreCase(method) && path.equals("/auth/bootstrap-admin")) {
+            return new RateLimitRule(securityProperties.getAdminBootstrapPerHour(), HOUR_MS, 3600, "bootstrap-admin");
+        }
         if ("PUT".equalsIgnoreCase(method) && path.equals("/auth/password")) {
             return new RateLimitRule(securityProperties.getPasswordChangePerHour(), HOUR_MS, 3600, "password");
         }

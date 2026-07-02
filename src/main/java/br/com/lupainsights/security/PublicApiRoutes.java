@@ -28,7 +28,9 @@ public final class PublicApiRoutes {
         if ("/health".equals(normalized) || "/".equals(normalized) || normalized.startsWith("/actuator/health")) {
             return true;
         }
-        if (normalized.startsWith("/auth/register") || normalized.startsWith("/auth/login")) {
+        if (normalized.startsWith("/auth/register") || normalized.startsWith("/auth/login")
+                || normalized.startsWith("/auth/forgot-password") || normalized.startsWith("/auth/reset-password")
+                || normalized.startsWith("/auth/bootstrap-admin")) {
             return true;
         }
         if (normalized.startsWith("/cnpj/preview")) {
