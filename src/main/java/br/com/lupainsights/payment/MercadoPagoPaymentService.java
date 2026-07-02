@@ -877,12 +877,13 @@ public class MercadoPagoPaymentService {
         String frontend = properties.getFrontendUrl().replaceAll("/$", "");
         boolean frontendLocal = frontend.contains("localhost") || frontend.contains("127.0.0.1");
 
-        Map<String, Object> item = Map.of(
-                "title", titulo,
-                "quantity", 1,
-                "currency_id", "BRL",
-                "unit_price", amountCents / 100.0
-        );
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", plan.name());
+        item.put("title", titulo);
+        item.put("description", titulo);
+        item.put("quantity", 1);
+        item.put("currency_id", "BRL");
+        item.put("unit_price", amountCents / 100.0);
 
         Map<String, Object> backUrls = new HashMap<>();
         backUrls.put("success", frontend + "/planos/sucesso");
@@ -891,22 +892,56 @@ public class MercadoPagoPaymentService {
 
         Map<String, Object> body = new HashMap<>();
         body.put("items", java.util.List.of(item));
-        body.put("payer", Map.of("email", user.getEmail()));
+        body.put("payer", montarPayerPreferencia(user));
         body.put("back_urls", backUrls);
         if (!frontendLocal) {
             body.put("auto_return", "approved");
         }
         body.put("external_reference", orderId.toString());
         adicionarNotificationUrlSeAplicavel(body);
-        body.put("payment_methods", Map.of(
-                "excluded_payment_types", java.util.List.of(
-                        Map.of("id", "ticket"),
-                        Map.of("id", "atm"),
-                        Map.of("id", "bank_transfer")
-                ),
-                "installments", plan == SubscriptionPlan.ADMIN_TEST ? 1 : 12
-        ));
+        body.put("payment_methods", montarPaymentMethodsPreferencia(plan));
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            body.put("statement_descriptor", "LUPA TESTE");
+        }
         return body;
+    }
+
+    private Map<String, Object> montarPayerPreferencia(UserEntity user) {
+        Map<String, Object> payer = new HashMap<>();
+        payer.put("email", user.getEmail());
+        if (user.getNome() != null && !user.getNome().isBlank()) {
+            String[] partes = user.getNome().trim().split("\\s+", 2);
+            payer.put("name", partes[0]);
+            if (partes.length > 1) {
+                payer.put("surname", partes[1]);
+            }
+        }
+        if (user.getCpf() != null && !user.getCpf().isBlank()) {
+            payer.put("identification", Map.of(
+                    "type", "CPF",
+                    "number", user.getCpf().replaceAll("\\D", "")
+            ));
+        }
+        return payer;
+    }
+
+    private Map<String, Object> montarPaymentMethodsPreferencia(SubscriptionPlan plan) {
+        List<Map<String, String>> excludedTypes = new ArrayList<>();
+        excludedTypes.add(Map.of("id", "ticket"));
+        excludedTypes.add(Map.of("id", "atm"));
+        excludedTypes.add(Map.of("id", "bank_transfer"));
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            // Evita tentar pagar com saldo da mesma conta vendedora (bloqueia o botão Pagar).
+            excludedTypes.add(Map.of("id", "account_money"));
+        }
+
+        Map<String, Object> paymentMethods = new HashMap<>();
+        paymentMethods.put("excluded_payment_types", excludedTypes);
+        paymentMethods.put("installments", plan == SubscriptionPlan.ADMIN_TEST ? 1 : 12);
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            paymentMethods.put("default_installments", 1);
+        }
+        return paymentMethods;
     }
 
     private void validarPlanoPagavel(UserEntity user, SubscriptionPlan plan) {
