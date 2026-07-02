@@ -37,6 +37,9 @@ class EmailVerificationServiceTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private TrialService trialService;
+
     private EmailProperties emailProperties;
     private EmailVerificationService service;
 
@@ -45,7 +48,7 @@ class EmailVerificationServiceTest {
         emailProperties = new EmailProperties();
         emailProperties.setFrontendUrl("http://localhost:4200");
         emailProperties.setVerificationTokenTtlHours(24);
-        service = new EmailVerificationService(userRepository, emailSender, emailProperties, authService);
+        service = new EmailVerificationService(userRepository, emailSender, emailProperties, authService, trialService);
     }
 
     @Test
@@ -78,6 +81,8 @@ class EmailVerificationServiceTest {
         when(authService.montarAuthResponsePublico(user)).thenReturn(new AuthResponse("jwt", userResponse));
 
         AuthResponse response = service.verificar(token);
+
+        verify(trialService).ativarTrialInicialSeElegivel(user);
 
         assertTrue(user.isEmailVerified());
         assertNull(user.getEmailVerificationTokenHash());

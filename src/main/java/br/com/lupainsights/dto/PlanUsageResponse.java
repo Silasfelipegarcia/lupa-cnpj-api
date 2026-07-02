@@ -14,6 +14,9 @@ public class PlanUsageResponse {
     private boolean filtrosAvancados;
     private boolean dedupeHabilitado;
     private boolean trialDisponivel;
+    private boolean emTrial;
+    private int trialDiasRestantes;
+    private boolean conversaoTrialPendente;
     private boolean dadosLimitados;
     private Integer maxImportJobsPerDay;
     private int importJobsToday;
@@ -112,6 +115,30 @@ public class PlanUsageResponse {
 
     public void setTrialDisponivel(boolean trialDisponivel) {
         this.trialDisponivel = trialDisponivel;
+    }
+
+    public boolean isEmTrial() {
+        return emTrial;
+    }
+
+    public void setEmTrial(boolean emTrial) {
+        this.emTrial = emTrial;
+    }
+
+    public int getTrialDiasRestantes() {
+        return trialDiasRestantes;
+    }
+
+    public void setTrialDiasRestantes(int trialDiasRestantes) {
+        this.trialDiasRestantes = trialDiasRestantes;
+    }
+
+    public boolean isConversaoTrialPendente() {
+        return conversaoTrialPendente;
+    }
+
+    public void setConversaoTrialPendente(boolean conversaoTrialPendente) {
+        this.conversaoTrialPendente = conversaoTrialPendente;
     }
 
     public boolean isDadosLimitados() {

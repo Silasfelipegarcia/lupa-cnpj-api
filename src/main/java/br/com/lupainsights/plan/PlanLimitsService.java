@@ -36,7 +36,7 @@ public class PlanLimitsService {
 
     public String nomeExibicao(SubscriptionPlan plan) {
         return switch (plan) {
-            case FREE -> "Free";
+            case FREE -> "Trial expirado";
             case PREMIUM -> "Prospecção";
             case PRO_PLUS -> "Growth";
         };
@@ -44,7 +44,7 @@ public class PlanLimitsService {
 
     public String descricaoCurta(SubscriptionPlan plan) {
         return switch (plan) {
-            case FREE -> "3 CNPJs/dia · 1 planilha de até 5 linhas";
+            case FREE -> "Após o trial · 3 CNPJs/dia · 1 planilha de até 5 linhas";
             case PREMIUM -> "10 planilhas/dia · até 100 empresas por planilha";
             case PRO_PLUS -> "50 planilhas/dia · até 500 empresas por planilha";
         };

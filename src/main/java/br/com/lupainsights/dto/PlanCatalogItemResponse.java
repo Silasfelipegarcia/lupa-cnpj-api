@@ -12,8 +12,13 @@ public class PlanCatalogItemResponse {
     private int maxRowsPerFile;
     private String batchSearchesPerDay;
     private String directCnpjPerDay;
+    /** Preço mensal de referência (compat). */
     private int priceCents;
     private String priceLabel;
+    private int monthlyPriceCents;
+    private int annualPriceCents;
+    private String annualPriceLabel;
+    private String paymentOptionsLabel;
     private List<String> beneficios;
     private boolean contatoComercial;
 
@@ -79,6 +84,38 @@ public class PlanCatalogItemResponse {
 
     public void setPriceLabel(String priceLabel) {
         this.priceLabel = priceLabel;
+    }
+
+    public int getMonthlyPriceCents() {
+        return monthlyPriceCents;
+    }
+
+    public void setMonthlyPriceCents(int monthlyPriceCents) {
+        this.monthlyPriceCents = monthlyPriceCents;
+    }
+
+    public int getAnnualPriceCents() {
+        return annualPriceCents;
+    }
+
+    public void setAnnualPriceCents(int annualPriceCents) {
+        this.annualPriceCents = annualPriceCents;
+    }
+
+    public String getAnnualPriceLabel() {
+        return annualPriceLabel;
+    }
+
+    public void setAnnualPriceLabel(String annualPriceLabel) {
+        this.annualPriceLabel = annualPriceLabel;
+    }
+
+    public String getPaymentOptionsLabel() {
+        return paymentOptionsLabel;
+    }
+
+    public void setPaymentOptionsLabel(String paymentOptionsLabel) {
+        this.paymentOptionsLabel = paymentOptionsLabel;
     }
 
     public List<String> getBeneficios() {

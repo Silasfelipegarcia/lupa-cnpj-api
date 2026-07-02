@@ -118,6 +118,7 @@ public class AuthService {
 
         trialService.expirarTrialSeNecessario(user);
         subscriptionService.expirarSeNecessario(user);
+        trialService.ativarTrialInicialSeElegivel(user);
         return montarAuthResponse(user);
     }
 
@@ -126,6 +127,7 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         subscriptionService.expirarSeNecessario(user);
         trialService.expirarTrialSeNecessario(user);
+        trialService.ativarTrialInicialSeElegivel(user);
         return toUserResponse(user);
     }
 
@@ -185,9 +187,13 @@ public class AuthService {
         response.setRole(user.getRole());
         SubscriptionPlan planoEfetivo = subscriptionService.resolverPlanoEfetivo(user);
         response.setPlan(planoEfetivo);
-        response.setPlanNome(planLimitsService.isMaster(user)
-                ? "Master"
-                : planLimitsService.nomeExibicao(planoEfetivo));
+        if (trialService.emTrial(user)) {
+            response.setPlanNome("Prospecção (trial)");
+        } else {
+            response.setPlanNome(planLimitsService.isMaster(user)
+                    ? "Master"
+                    : planLimitsService.nomeExibicao(planoEfetivo));
+        }
         response.setUsage(planService.montarUsage(user));
         response.setSubscription(subscriptionService.montarStatus(user));
         return response;

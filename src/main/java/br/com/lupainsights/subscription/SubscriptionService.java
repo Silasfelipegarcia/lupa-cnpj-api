@@ -19,7 +19,7 @@ import java.util.UUID;
 @Service
 public class SubscriptionService {
 
-    private static final int PERIODO_DIAS = 30;
+    private static final int PERIODO_DIAS_ANUAL = 365;
 
     private final UserRepository userRepository;
     private final MercadoPagoProperties properties;
@@ -36,7 +36,7 @@ public class SubscriptionService {
                 : paidAt;
 
         user.setPlan(plan);
-        user.setPlanValidUntil(base.plus(PERIODO_DIAS, ChronoUnit.DAYS));
+        user.setPlanValidUntil(base.plus(PERIODO_DIAS_ANUAL, ChronoUnit.DAYS));
         user.setAutoRenew(true);
         user.setPlanCancelledAt(null);
         user.setTrialAte(null);
@@ -61,20 +61,24 @@ public class SubscriptionService {
     public int calcularValorCobranca(UserEntity user, SubscriptionPlan targetPlan) {
         int precoCheio = precoPlano(targetPlan);
         if (ehUpgradeProporcional(user, targetPlan)) {
-            int diff = properties.getProPlusPriceCents() - properties.getPremiumPriceCents();
-            long dias = ChronoUnit.DAYS.between(Instant.now(), user.getPlanValidUntil());
-            dias = Math.max(1, Math.min(dias, PERIODO_DIAS));
-            int proporcional = (int) Math.round(diff * (dias / (double) PERIODO_DIAS));
+            int diff = precoAnual(SubscriptionPlan.PRO_PLUS) - precoAnual(SubscriptionPlan.PREMIUM);
+            long diasRestantes = ChronoUnit.DAYS.between(Instant.now(), user.getPlanValidUntil());
+            long totalDias = periodoTotalDias(user);
+            diasRestantes = Math.max(1, Math.min(diasRestantes, totalDias));
+            int proporcional = (int) Math.round(diff * (diasRestantes / (double) totalDias));
             return Math.max(100, proporcional);
         }
         return precoCheio;
     }
 
-    public PlanQuoteResponse montarCotacao(UserEntity user, SubscriptionPlan targetPlan) {
+    public PlanQuoteResponse montarCotacao(UserEntity user, SubscriptionPlan targetPlan, Integer installments) {
         if (targetPlan != SubscriptionPlan.PREMIUM && targetPlan != SubscriptionPlan.PRO_PLUS) {
             throw new IllegalArgumentException("Plano inválido para cotação");
         }
 
+        int parcelas = normalizarParcelas(installments);
+        int monthlyCents = precoMensal(targetPlan);
+        int annualCents = precoAnual(targetPlan);
         int fullPrice = precoPlano(targetPlan);
         int amount = calcularValorCobranca(user, targetPlan);
         boolean upgrade = ehUpgradeProporcional(user, targetPlan);
@@ -85,18 +89,54 @@ public class SubscriptionService {
         quote.setAmountLabel(formatarValor(amount));
         quote.setFullPriceCents(fullPrice);
         quote.setFullPriceLabel(formatarValor(fullPrice));
+        quote.setMonthlyPriceCents(monthlyCents);
+        quote.setAnnualPriceCents(annualCents);
+        quote.setInstallments(parcelas);
+        if (parcelas > 1 && !upgrade) {
+            quote.setInstallmentAmountLabel(formatarValor(monthlyCents));
+        }
         quote.setUpgrade(upgrade);
         if (upgrade && user.getPlanValidUntil() != null) {
             long dias = ChronoUnit.DAYS.between(Instant.now(), user.getPlanValidUntil());
-            quote.setDescription("Diferença proporcional aos " + Math.max(1, dias) + " dias restantes do período");
+            quote.setDescription("Diferença proporcional aos " + Math.max(1, dias) + " dias restantes do período anual");
         }
         return quote;
     }
 
+    private int normalizarParcelas(Integer installments) {
+        int parcelas = installments == null ? 1 : installments;
+        if (parcelas < 1 || parcelas > 12) {
+            throw new IllegalArgumentException("Parcelas devem ser entre 1 e 12");
+        }
+        return parcelas;
+    }
+
+    private long periodoTotalDias(UserEntity user) {
+        if (user.getPlanValidUntil() == null) {
+            return PERIODO_DIAS_ANUAL;
+        }
+        long diasRestantes = ChronoUnit.DAYS.between(Instant.now(), user.getPlanValidUntil());
+        if (diasRestantes <= 0) {
+            return PERIODO_DIAS_ANUAL;
+        }
+        if (diasRestantes > PERIODO_DIAS_ANUAL) {
+            return diasRestantes;
+        }
+        return PERIODO_DIAS_ANUAL;
+    }
+
     private int precoPlano(SubscriptionPlan plan) {
+        return precoAnual(plan);
+    }
+
+    private int precoMensal(SubscriptionPlan plan) {
         return plan == SubscriptionPlan.PREMIUM
                 ? properties.getPremiumPriceCents()
                 : properties.getProPlusPriceCents();
+    }
+
+    private int precoAnual(SubscriptionPlan plan) {
+        return precoMensal(plan) * 12;
     }
 
     private String formatarValor(int amountCents) {

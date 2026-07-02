@@ -11,6 +11,8 @@ public class ChargePlanRequest {
     private String token;
     /** Cobrança automática de renovação (sem CVV do usuário). */
     private boolean renewal;
+    /** Parcelas no cartão (1 = à vista, até 12). */
+    private Integer installments = 1;
 
     public SubscriptionPlan getPlan() {
         return plan;
@@ -50,5 +52,13 @@ public class ChargePlanRequest {
 
     public void setRenewal(boolean renewal) {
         this.renewal = renewal;
+    }
+
+    public Integer getInstallments() {
+        return installments;
+    }
+
+    public void setInstallments(Integer installments) {
+        this.installments = installments;
     }
 }

@@ -24,9 +24,9 @@ public class TrialController {
     }
 
     @PostMapping("/trial")
-    public ResponseEntity<UserResponse> iniciarTrial() {
+    public ResponseEntity<UserResponse> confirmarConversaoTrial() {
         UUID userId = SecurityUtils.currentUserId();
-        trialService.iniciarTrial(userId);
+        trialService.confirmarConversaoTrial(userId);
         return ResponseEntity.ok(authService.obterUsuario(userId));
     }
 }

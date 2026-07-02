@@ -78,7 +78,7 @@ public class PaymentController {
                     .body(objectMapper.readValue(cached.get().responseBody(), CheckoutResponse.class));
         }
 
-        CheckoutResponse checkout = paymentService.criarCheckout(userId, request.getPlan());
+        CheckoutResponse checkout = paymentService.criarCheckout(userId, request);
         ResponseEntity<CheckoutResponse> response = ResponseEntity.ok(checkout);
         idempotencyService.salvar(userId, CHECKOUT_ENDPOINT, idempotencyKey, response);
         return response;
@@ -91,8 +91,10 @@ public class PaymentController {
     }
 
     @GetMapping("/quote")
-    public ResponseEntity<PlanQuoteResponse> cotacao(@RequestParam SubscriptionPlan plan) {
-        return ResponseEntity.ok(paymentService.obterCotacao(SecurityUtils.currentUserId(), plan));
+    public ResponseEntity<PlanQuoteResponse> cotacao(
+            @RequestParam SubscriptionPlan plan,
+            @RequestParam(required = false, defaultValue = "1") Integer installments) {
+        return ResponseEntity.ok(paymentService.obterCotacao(SecurityUtils.currentUserId(), plan, installments));
     }
 
     @GetMapping("/config")

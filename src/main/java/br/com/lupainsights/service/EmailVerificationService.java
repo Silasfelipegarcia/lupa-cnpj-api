@@ -26,21 +26,24 @@ public class EmailVerificationService {
             "Se o e-mail estiver cadastrado e ainda não foi confirmado, você receberá um novo link em instantes.";
 
     private static final String MENSAGEM_CADASTRO =
-            "Cadastro realizado. Verifique seu e-mail para confirmar a conta antes de entrar.";
+            "Cadastro realizado! Confirme seu e-mail para ativar 7 dias de Prospecção grátis.";
 
     private final UserRepository userRepository;
     private final EmailSender emailSender;
     private final EmailProperties emailProperties;
     private final AuthService authService;
+    private final TrialService trialService;
 
     public EmailVerificationService(UserRepository userRepository,
                                   EmailSender emailSender,
                                   EmailProperties emailProperties,
-                                  @Lazy AuthService authService) {
+                                  @Lazy AuthService authService,
+                                  @Lazy TrialService trialService) {
         this.userRepository = userRepository;
         this.emailSender = emailSender;
         this.emailProperties = emailProperties;
         this.authService = authService;
+        this.trialService = trialService;
     }
 
     @Transactional
@@ -80,6 +83,8 @@ public class EmailVerificationService {
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         userRepository.save(user);
+
+        trialService.ativarTrialInicialSeElegivel(user);
 
         return authService.montarAuthResponsePublico(user);
     }

@@ -4,6 +4,7 @@ import br.com.lupainsights.config.MercadoPagoProperties;
 import br.com.lupainsights.domain.SubscriptionPlan;
 import br.com.lupainsights.dto.ChargePlanRequest;
 import br.com.lupainsights.dto.ChargePlanResponse;
+import br.com.lupainsights.dto.CheckoutRequest;
 import br.com.lupainsights.dto.CheckoutSyncRequest;
 import br.com.lupainsights.dto.CheckoutSyncResponse;
 import br.com.lupainsights.dto.CheckoutResponse;
@@ -19,10 +20,12 @@ import br.com.lupainsights.plan.PlanLimitsService;
 import br.com.lupainsights.repository.PaymentOrderRepository;
 import br.com.lupainsights.repository.UserRepository;
 import br.com.lupainsights.subscription.SubscriptionService;
+import br.com.lupainsights.service.TrialService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +51,7 @@ public class MercadoPagoPaymentService {
     private final PlanLimitsService planLimitsService;
     private final MercadoPagoCustomerService customerService;
     private final SubscriptionService subscriptionService;
+    private final TrialService trialService;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
@@ -57,6 +61,7 @@ public class MercadoPagoPaymentService {
                                      PlanLimitsService planLimitsService,
                                      MercadoPagoCustomerService customerService,
                                      SubscriptionService subscriptionService,
+                                     @Lazy TrialService trialService,
                                      ObjectMapper objectMapper) {
         this.properties = properties;
         this.paymentOrderRepository = paymentOrderRepository;
@@ -64,6 +69,7 @@ public class MercadoPagoPaymentService {
         this.planLimitsService = planLimitsService;
         this.customerService = customerService;
         this.subscriptionService = subscriptionService;
+        this.trialService = trialService;
         this.objectMapper = objectMapper;
         this.restClient = RestClient.builder()
                 .baseUrl(properties.getApiBaseUrl())
@@ -71,13 +77,15 @@ public class MercadoPagoPaymentService {
     }
 
     @Transactional
-    public CheckoutResponse criarCheckout(UUID userId, SubscriptionPlan plan) {
+    public CheckoutResponse criarCheckout(UUID userId, CheckoutRequest request) {
         if (!properties.isConfigured()) {
             throw new IllegalStateException("Pagamentos não configurados. Defina MERCADOPAGO_ACCESS_TOKEN no servidor.");
         }
+        SubscriptionPlan plan = request.getPlan();
         if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
             throw new IllegalArgumentException("Plano inválido para checkout");
         }
+        validarParcelas(request.getInstallments());
 
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
@@ -130,14 +138,14 @@ public class MercadoPagoPaymentService {
         return checkout;
     }
 
-    public PlanQuoteResponse obterCotacao(UUID userId, SubscriptionPlan plan) {
+    public PlanQuoteResponse obterCotacao(UUID userId, SubscriptionPlan plan, Integer installments) {
         if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
             throw new IllegalArgumentException("Plano inválido para cotação");
         }
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         subscriptionService.expirarSeNecessario(user);
-        return subscriptionService.montarCotacao(user, plan);
+        return subscriptionService.montarCotacao(user, plan, installments);
     }
 
     public PaymentConfigResponse obterConfig() {
@@ -222,6 +230,7 @@ public class MercadoPagoPaymentService {
             }
             SavedCardResponse card = mapearCartao(response);
             subscriptionService.definirCartaoPadrao(user, card.getId());
+            trialService.habilitarConversaoAoSalvarCartao(user);
             card.setDefaultCard(true);
             return card;
         } catch (RestClientResponseException e) {
@@ -275,6 +284,7 @@ public class MercadoPagoPaymentService {
 
         String paymentToken = resolverTokenPagamento(user, request);
         int amountCents = subscriptionService.calcularValorCobranca(user, plan);
+        int installments = validarParcelas(request.getInstallments());
 
         UUID orderId = UUID.randomUUID();
         PaymentOrderEntity order = new PaymentOrderEntity();
@@ -294,7 +304,7 @@ public class MercadoPagoPaymentService {
         body.put("transaction_amount", amountCents / 100.0);
         body.put("token", paymentToken);
         body.put("description", descricaoPagamento(plan, subscriptionService.ehUpgradeProporcional(user, plan)));
-        body.put("installments", 1);
+        body.put("installments", installments);
         body.put("external_reference", orderId.toString());
         body.put("payer", payer);
         if (cartaoMp != null) {
@@ -769,9 +779,17 @@ public class MercadoPagoPaymentService {
                         Map.of("id", "atm"),
                         Map.of("id", "bank_transfer")
                 ),
-                "installments", 1
+                "installments", 12
         ));
         return body;
+    }
+
+    private int validarParcelas(Integer installments) {
+        int parcelas = installments == null ? 1 : installments;
+        if (parcelas < 1 || parcelas > 12) {
+            throw new IllegalArgumentException("Parcelas devem ser entre 1 e 12");
+        }
+        return parcelas;
     }
 
     private String descricaoPagamento(SubscriptionPlan plan, boolean upgrade) {
