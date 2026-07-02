@@ -59,6 +59,9 @@ public class SubscriptionService {
     }
 
     public int calcularValorCobranca(UserEntity user, SubscriptionPlan targetPlan) {
+        if (targetPlan == SubscriptionPlan.ADMIN_TEST) {
+            return properties.getAdminTestPriceCents();
+        }
         int precoCheio = precoPlano(targetPlan);
         if (ehUpgradeProporcional(user, targetPlan)) {
             int diff = precoAnual(SubscriptionPlan.PRO_PLUS) - precoAnual(SubscriptionPlan.PREMIUM);
@@ -72,6 +75,20 @@ public class SubscriptionService {
     }
 
     public PlanQuoteResponse montarCotacao(UserEntity user, SubscriptionPlan targetPlan, Integer installments) {
+        if (targetPlan == SubscriptionPlan.ADMIN_TEST) {
+            int amount = properties.getAdminTestPriceCents();
+            PlanQuoteResponse quote = new PlanQuoteResponse();
+            quote.setPlan(targetPlan);
+            quote.setAmountCents(amount);
+            quote.setAmountLabel(formatarValor(amount));
+            quote.setFullPriceCents(amount);
+            quote.setFullPriceLabel(formatarValor(amount));
+            quote.setMonthlyPriceCents(amount);
+            quote.setAnnualPriceCents(amount);
+            quote.setInstallments(1);
+            quote.setUpgrade(false);
+            return quote;
+        }
         if (targetPlan != SubscriptionPlan.PREMIUM && targetPlan != SubscriptionPlan.PRO_PLUS) {
             throw new IllegalArgumentException("Plano inválido para cotação");
         }
@@ -130,12 +147,18 @@ public class SubscriptionService {
     }
 
     private int precoMensal(SubscriptionPlan plan) {
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            return properties.getAdminTestPriceCents();
+        }
         return plan == SubscriptionPlan.PREMIUM
                 ? properties.getPremiumPriceCents()
                 : properties.getProPlusPriceCents();
     }
 
     private int precoAnual(SubscriptionPlan plan) {
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            return properties.getAdminTestPriceCents();
+        }
         return precoMensal(plan) * 12;
     }
 
@@ -274,6 +297,7 @@ public class SubscriptionService {
             case FREE -> "Free";
             case PREMIUM -> "Prospecção";
             case PRO_PLUS -> "Growth";
+            case ADMIN_TEST -> "Teste Admin";
         };
     }
 }

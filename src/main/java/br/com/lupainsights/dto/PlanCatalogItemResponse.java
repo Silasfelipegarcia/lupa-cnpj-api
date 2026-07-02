@@ -21,6 +21,7 @@ public class PlanCatalogItemResponse {
     private String paymentOptionsLabel;
     private List<String> beneficios;
     private boolean contatoComercial;
+    private boolean somenteAdmin;
 
     public SubscriptionPlan getPlan() {
         return plan;
@@ -132,5 +133,13 @@ public class PlanCatalogItemResponse {
 
     public void setContatoComercial(boolean contatoComercial) {
         this.contatoComercial = contatoComercial;
+    }
+
+    public boolean isSomenteAdmin() {
+        return somenteAdmin;
+    }
+
+    public void setSomenteAdmin(boolean somenteAdmin) {
+        this.somenteAdmin = somenteAdmin;
     }
 }

@@ -2,6 +2,7 @@ package br.com.lupainsights.payment;
 
 import br.com.lupainsights.config.MercadoPagoProperties;
 import br.com.lupainsights.domain.SubscriptionPlan;
+import br.com.lupainsights.domain.UserRole;
 import br.com.lupainsights.dto.ChargePlanRequest;
 import br.com.lupainsights.dto.ChargePlanResponse;
 import br.com.lupainsights.dto.CheckoutRequest;
@@ -82,13 +83,12 @@ public class MercadoPagoPaymentService {
             throw new IllegalStateException("Pagamentos não configurados. Defina MERCADOPAGO_ACCESS_TOKEN no servidor.");
         }
         SubscriptionPlan plan = request.getPlan();
-        if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
-            throw new IllegalArgumentException("Plano inválido para checkout");
-        }
-        validarParcelas(request.getInstallments());
-
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        validarPlanoPagavel(user, plan);
+        int installments = plan == SubscriptionPlan.ADMIN_TEST
+                ? 1
+                : validarParcelas(request.getInstallments());
 
         UUID orderId = UUID.randomUUID();
         int amountCents = subscriptionService.calcularValorCobranca(user, plan);
@@ -139,11 +139,9 @@ public class MercadoPagoPaymentService {
     }
 
     public PlanQuoteResponse obterCotacao(UUID userId, SubscriptionPlan plan, Integer installments) {
-        if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
-            throw new IllegalArgumentException("Plano inválido para cotação");
-        }
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        validarPlanoPagavel(user, plan);
         subscriptionService.expirarSeNecessario(user);
         return subscriptionService.montarCotacao(user, plan, installments);
     }
@@ -267,15 +265,12 @@ public class MercadoPagoPaymentService {
             throw new IllegalStateException("Pagamentos não configurados.");
         }
         SubscriptionPlan plan = request.getPlan();
-        if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
-            throw new IllegalArgumentException("Plano inválido para cobrança");
-        }
-
         boolean cartaoSalvo = usaCartaoSalvo(request);
         UserEntity user = cartaoSalvo
                 ? customerService.obterOuCriar(userId)
                 : userRepository.findById(userId)
                         .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        validarPlanoPagavel(user, plan);
 
         JsonNode cartaoMp = null;
         if (cartaoSalvo && request.getCardId() != null && !request.getCardId().isBlank()) {
@@ -284,7 +279,9 @@ public class MercadoPagoPaymentService {
 
         String paymentToken = resolverTokenPagamento(user, request);
         int amountCents = subscriptionService.calcularValorCobranca(user, plan);
-        int installments = validarParcelas(request.getInstallments());
+        int installments = plan == SubscriptionPlan.ADMIN_TEST
+                ? 1
+                : validarParcelas(request.getInstallments());
 
         UUID orderId = UUID.randomUUID();
         PaymentOrderEntity order = new PaymentOrderEntity();
@@ -389,6 +386,14 @@ public class MercadoPagoPaymentService {
 
     private void aplicarPagamentoAprovado(UserEntity user, SubscriptionPlan plan,
                                           PaymentOrderEntity order, String cardId) {
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            if (cardId != null && !cardId.isBlank()) {
+                subscriptionService.definirCartaoPadrao(user, cardId);
+            }
+            log.info("Pagamento teste admin aprovado para {} (R$ {})",
+                    user.getEmail(), order.getAmountCents() / 100.0);
+            return;
+        }
         Instant paidAt = order.getPaidAt() != null ? order.getPaidAt() : Instant.now();
         if (order.isRenewal()) {
             subscriptionService.ativarPeriodoPago(user, plan, paidAt, true);
@@ -779,9 +784,21 @@ public class MercadoPagoPaymentService {
                         Map.of("id", "atm"),
                         Map.of("id", "bank_transfer")
                 ),
-                "installments", 12
+                "installments", plan == SubscriptionPlan.ADMIN_TEST ? 1 : 12
         ));
         return body;
+    }
+
+    private void validarPlanoPagavel(UserEntity user, SubscriptionPlan plan) {
+        if (plan == SubscriptionPlan.ADMIN_TEST) {
+            if (user.getRole() != UserRole.ADMIN) {
+                throw new ForbiddenException("Plano disponível apenas para administradores.");
+            }
+            return;
+        }
+        if (plan != SubscriptionPlan.PREMIUM && plan != SubscriptionPlan.PRO_PLUS) {
+            throw new IllegalArgumentException("Plano inválido para pagamento");
+        }
     }
 
     private int validarParcelas(Integer installments) {
@@ -796,6 +813,11 @@ public class MercadoPagoPaymentService {
         if (upgrade) {
             return "Upgrade Lupa Insights Growth (proporcional)";
         }
-        return plan == SubscriptionPlan.PREMIUM ? "Lupa Insights Prospecção" : "Lupa Insights Growth";
+        return switch (plan) {
+            case PREMIUM -> "Lupa Insights Prospecção";
+            case PRO_PLUS -> "Lupa Insights Growth";
+            case ADMIN_TEST -> "Lupa Insights Teste Admin";
+            default -> "Lupa Insights";
+        };
     }
 }

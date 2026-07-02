@@ -31,6 +31,7 @@ public class PlanLimitsService {
             case FREE -> new PlanLimits(5, null, 3, false, false, false, false, false, true, 1);
             case PREMIUM -> new PlanLimits(100, null, null, true, true, true, false, false, false, 10);
             case PRO_PLUS -> new PlanLimits(500, null, null, true, true, true, true, true, false, 50);
+            case ADMIN_TEST -> new PlanLimits(5, null, 3, false, false, false, false, false, true, 1);
         };
     }
 
@@ -39,6 +40,7 @@ public class PlanLimitsService {
             case FREE -> "Trial expirado";
             case PREMIUM -> "Prospecção";
             case PRO_PLUS -> "Growth";
+            case ADMIN_TEST -> "Teste Admin";
         };
     }
 
@@ -47,6 +49,7 @@ public class PlanLimitsService {
             case FREE -> "Após o trial · 3 CNPJs/dia · 1 planilha de até 5 linhas";
             case PREMIUM -> "10 planilhas/dia · até 100 empresas por planilha";
             case PRO_PLUS -> "50 planilhas/dia · até 500 empresas por planilha";
+            case ADMIN_TEST -> "Pagamento único · somente administradores";
         };
     }
 }

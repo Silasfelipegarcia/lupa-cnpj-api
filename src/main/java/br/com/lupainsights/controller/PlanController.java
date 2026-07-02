@@ -2,6 +2,7 @@ package br.com.lupainsights.controller;
 
 import br.com.lupainsights.dto.PlanCatalogItemResponse;
 import br.com.lupainsights.plan.PlanService;
+import br.com.lupainsights.security.SecurityUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +22,6 @@ public class PlanController {
 
     @GetMapping
     public ResponseEntity<List<PlanCatalogItemResponse>> catalogo() {
-        return ResponseEntity.ok(planService.catalogo());
+        return ResponseEntity.ok(planService.catalogo(SecurityUtils.isAdmin()));
     }
 }

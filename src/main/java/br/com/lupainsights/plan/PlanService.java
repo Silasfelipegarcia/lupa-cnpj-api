@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class PlanService {
@@ -53,13 +54,42 @@ public class PlanService {
         return response;
     }
 
-    public List<PlanCatalogItemResponse> catalogo() {
+    public List<PlanCatalogItemResponse> catalogo(boolean incluirPlanoAdmin) {
         List<PlanCatalogItemResponse> itens = new ArrayList<>();
         itens.add(itemTrialGratis());
         itens.add(item(SubscriptionPlan.PREMIUM, mercadoPagoProperties.getPremiumPriceCents()));
         itens.add(item(SubscriptionPlan.PRO_PLUS, mercadoPagoProperties.getProPlusPriceCents()));
+        if (incluirPlanoAdmin) {
+            itens.add(itemAdminTest());
+        }
         itens.add(itemBusiness());
         return itens;
+    }
+
+    private PlanCatalogItemResponse itemAdminTest() {
+        int priceCents = mercadoPagoProperties.getAdminTestPriceCents();
+        PlanCatalogItemResponse item = new PlanCatalogItemResponse();
+        item.setPlan(SubscriptionPlan.ADMIN_TEST);
+        item.setNome("Teste Admin");
+        item.setDescricao("Pagamento único de R$ 1,00 para validar cartão e fluxo de cobrança");
+        item.setMaxRowsPerFile(0);
+        item.setBatchSearchesPerDay("—");
+        item.setDirectCnpjPerDay("—");
+        item.setPriceCents(priceCents);
+        item.setMonthlyPriceCents(priceCents);
+        item.setAnnualPriceCents(priceCents);
+        item.setPriceLabel(String.format(Locale.forLanguageTag("pt-BR"), "R$ %.2f", priceCents / 100.0));
+        item.setAnnualPriceLabel("Pagamento único");
+        item.setPaymentOptionsLabel("Somente administradores");
+        item.setBeneficios(List.of(
+                "Cobrança real de R$ 1,00 no cartão",
+                "Valida integração com Mercado Pago",
+                "Não altera seu acesso Master",
+                "Pode repetir quando precisar testar"
+        ));
+        item.setContatoComercial(false);
+        item.setSomenteAdmin(true);
+        return item;
     }
 
     private PlanCatalogItemResponse itemTrialGratis() {

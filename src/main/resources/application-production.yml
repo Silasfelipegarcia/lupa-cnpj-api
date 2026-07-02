@@ -31,4 +31,5 @@ mercadopago:
   api-public-url: ${API_PUBLIC_URL:https://lupa-cnpj-api-production.up.railway.app}
   premium-price-cents: ${MERCADOPAGO_PREMIUM_PRICE_CENTS:990}
   pro-plus-price-cents: ${MERCADOPAGO_PRO_PLUS_PRICE_CENTS:2990}
+  admin-test-price-cents: ${MERCADOPAGO_ADMIN_TEST_PRICE_CENTS:100}
   webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
