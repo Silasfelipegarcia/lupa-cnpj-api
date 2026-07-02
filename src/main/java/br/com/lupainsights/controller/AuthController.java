@@ -9,12 +9,17 @@ import br.com.lupainsights.dto.ForgotPasswordRequest;
 import br.com.lupainsights.dto.ForgotPasswordResponse;
 import br.com.lupainsights.dto.LoginRequest;
 import br.com.lupainsights.dto.RegisterRequest;
+import br.com.lupainsights.dto.RegisterResponse;
+import br.com.lupainsights.dto.ResendVerificationRequest;
+import br.com.lupainsights.dto.ResendVerificationResponse;
 import br.com.lupainsights.dto.ResetPasswordRequest;
+import br.com.lupainsights.dto.VerifyEmailRequest;
 import br.com.lupainsights.dto.UserResponse;
 import br.com.lupainsights.observability.RequestContext;
 import br.com.lupainsights.security.SecurityUtils;
 import br.com.lupainsights.service.AdminBootstrapService;
 import br.com.lupainsights.service.AuthService;
+import br.com.lupainsights.service.EmailVerificationService;
 import br.com.lupainsights.service.PasswordResetService;
 import br.com.lupainsights.util.RequestIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,25 +44,75 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final EmailVerificationService emailVerificationService;
     private final AdminBootstrapService adminBootstrapService;
     private final AuditLogService auditLogService;
     private final RequestIpResolver requestIpResolver;
 
     public AuthController(AuthService authService,
                           PasswordResetService passwordResetService,
+                          EmailVerificationService emailVerificationService,
                           AdminBootstrapService adminBootstrapService,
                           AuditLogService auditLogService,
                           RequestIpResolver requestIpResolver) {
         this.authService = authService;
         this.passwordResetService = passwordResetService;
+        this.emailVerificationService = emailVerificationService;
         this.adminBootstrapService = adminBootstrapService;
         this.auditLogService = auditLogService;
         this.requestIpResolver = requestIpResolver;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> registrar(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrar(request));
+    public ResponseEntity<RegisterResponse> registrar(@Valid @RequestBody RegisterRequest request,
+                                                      HttpServletRequest httpRequest) {
+        RegisterResponse response = authService.registrar(request);
+        auditLogService.registrar(
+                AuditAction.EMAIL_VERIFICATION_SENT,
+                "POST",
+                "/auth/register",
+                requestIpResolver.resolver(httpRequest),
+                201,
+                null,
+                null,
+                0,
+                RequestContext.requestIdAtual());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<AuthResponse> verificarEmail(@Valid @RequestBody VerifyEmailRequest request,
+                                                     HttpServletRequest httpRequest) {
+        AuthResponse response = emailVerificationService.verificar(request.getToken());
+        auditLogService.registrar(
+                AuditAction.EMAIL_VERIFICATION_COMPLETE,
+                "POST",
+                "/auth/verify-email",
+                requestIpResolver.resolver(httpRequest),
+                200,
+                response.getUser().getId(),
+                null,
+                0,
+                RequestContext.requestIdAtual());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ResendVerificationResponse> reenviarVerificacao(
+            @Valid @RequestBody ResendVerificationRequest request,
+            HttpServletRequest httpRequest) {
+        ResendVerificationResponse response = emailVerificationService.reenviar(request.getEmail());
+        auditLogService.registrar(
+                AuditAction.EMAIL_VERIFICATION_SENT,
+                "POST",
+                "/auth/resend-verification",
+                requestIpResolver.resolver(httpRequest),
+                200,
+                null,
+                null,
+                0,
+                RequestContext.requestIdAtual());
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")

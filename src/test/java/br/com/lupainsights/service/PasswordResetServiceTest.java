@@ -101,6 +101,20 @@ class PasswordResetServiceTest {
     }
 
     @Test
+    void solicitarResetComFalhaNoEmailDeveRetornarMensagemGenerica() {
+        UserEntity user = usuario("user@example.com");
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new IllegalStateException("falha resend")).when(emailSender)
+                .enviarResetSenha(any(), any(), any());
+
+        ForgotPasswordResponse response = service.solicitarReset("user@example.com");
+
+        assertNotNull(response.getMensagem());
+        assertNotNull(user.getPasswordResetTokenHash());
+    }
+
+    @Test
     void redefinirSenhaComTokenInvalidoDeveFalhar() {
         ResetPasswordRequest request = new ResetPasswordRequest();
         request.setToken(PasswordResetTokenUtil.gerarToken());

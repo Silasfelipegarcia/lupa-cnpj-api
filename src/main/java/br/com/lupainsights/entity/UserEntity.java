@@ -78,6 +78,15 @@ public class UserEntity {
     @Column(name = "password_reset_expires_at")
     private Instant passwordResetExpiresAt;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "email_verification_token_hash", length = 64)
+    private String emailVerificationTokenHash;
+
+    @Column(name = "email_verification_expires_at")
+    private Instant emailVerificationExpiresAt;
+
     public UUID getId() {
         return id;
     }
@@ -246,5 +255,35 @@ public class UserEntity {
         return passwordResetTokenHash != null
                 && passwordResetExpiresAt != null
                 && Instant.now().isBefore(passwordResetExpiresAt);
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public String getEmailVerificationTokenHash() {
+        return emailVerificationTokenHash;
+    }
+
+    public void setEmailVerificationTokenHash(String emailVerificationTokenHash) {
+        this.emailVerificationTokenHash = emailVerificationTokenHash;
+    }
+
+    public Instant getEmailVerificationExpiresAt() {
+        return emailVerificationExpiresAt;
+    }
+
+    public void setEmailVerificationExpiresAt(Instant emailVerificationExpiresAt) {
+        this.emailVerificationExpiresAt = emailVerificationExpiresAt;
+    }
+
+    public boolean isEmailVerificationTokenValido() {
+        return emailVerificationTokenHash != null
+                && emailVerificationExpiresAt != null
+                && Instant.now().isBefore(emailVerificationExpiresAt);
     }
 }

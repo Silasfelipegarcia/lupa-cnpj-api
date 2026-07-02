@@ -6,6 +6,8 @@ import br.com.lupainsights.dto.ResetPasswordRequest;
 import br.com.lupainsights.entity.UserEntity;
 import br.com.lupainsights.repository.UserRepository;
 import br.com.lupainsights.util.PasswordResetTokenUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,8 @@ import java.util.Optional;
 
 @Service
 public class PasswordResetService {
+
+    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
     private static final String MENSAGEM_GENERICA =
             "Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha em instantes.";
@@ -57,7 +61,11 @@ public class PasswordResetService {
         userRepository.save(user);
 
         String resetLink = montarResetLink(token);
-        emailSender.enviarResetSenha(user.getEmail(), user.getNome(), resetLink);
+        try {
+            emailSender.enviarResetSenha(user.getEmail(), user.getNome(), resetLink);
+        } catch (RuntimeException ex) {
+            log.error("Falha ao enviar reset para {}: {}", user.getEmail(), ex.getMessage());
+        }
 
         return new ForgotPasswordResponse(MENSAGEM_GENERICA);
     }

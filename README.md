@@ -44,7 +44,7 @@ API em `http://localhost:8080`.
 | `MERCADOPAGO_ACCESS_TOKEN` | — | Access Token (TEST local / APP_USR produção) |
 | `FRONTEND_URL` | `http://localhost:4200` | Redirects do checkout e link de reset de senha |
 | `API_PUBLIC_URL` | `http://localhost:8080` | Webhook MP |
-| `RESEND_API_KEY` | — | API key Resend (reset de senha por e-mail) |
+| `RESEND_API_KEY` | — | API key Resend (verificação de e-mail e reset de senha) |
 | `EMAIL_FROM` | `noreply@lupacnpjs.com.br` | Remetente dos e-mails transacionais |
 | `EMAIL_FROM_NAME` | `Lupa Insights` | Nome exibido no remetente |
 | `EMAIL_ENABLED` | `true` | `false` em dev loga o link no console sem enviar |
@@ -65,9 +65,10 @@ Para o **Railway**, use `railway.env.example` → `railway.env` (gitignored) com
 | `MERCADOPAGO_ACCESS_TOKEN` | Sim (pagamentos) | `TEST-...` (teste) ou `APP_USR-...` (produção) |
 | `FRONTEND_URL` | Sim (pagamentos + reset) | URL do frontend |
 | `API_PUBLIC_URL` | Sim (pagamentos) | URL pública da API (webhook) |
-| `RESEND_API_KEY` | Sim (reset de senha) | API key Resend — verificar domínio no painel |
-| `EMAIL_FROM` | Sim (reset de senha) | Ex.: `noreply@lupacnpjs.com.br` |
+| `RESEND_API_KEY` | Sim (e-mail transacional) | API key Resend — verificar domínio no painel |
+| `EMAIL_FROM` | Sim (e-mail transacional) | Ex.: `noreply@lupacnpjs.com.br` |
 | `EMAIL_FROM_NAME` | Não | Nome do remetente (padrão: Lupa Insights) |
+| `EMAIL_ENABLED` | Não | `true` em produção; `false` em dev loga links no console |
 | `NEW_RELIC_LICENSE_KEY` | Não (APM) | License key do New Relic — ativa o agente Java no container |
 | `NEW_RELIC_APP_NAME` | Não (APM) | Nome do app no painel New Relic (padrão sugerido: `lupa-cnpj-api`) |
 

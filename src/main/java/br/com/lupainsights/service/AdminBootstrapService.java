@@ -73,6 +73,7 @@ public class AdminBootstrapService {
 
         user.setRole(UserRole.ADMIN);
         user.setPlan(SubscriptionPlan.PRO_PLUS);
+        user.setEmailVerified(true);
         user.setEnabled(true);
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
@@ -97,6 +98,7 @@ public class AdminBootstrapService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setCreatedAt(Instant.now());
         user.setEnabled(true);
+        user.setEmailVerified(true);
         user.setRole(UserRole.ADMIN);
         user.setPlan(SubscriptionPlan.PRO_PLUS);
         userRepository.save(user);

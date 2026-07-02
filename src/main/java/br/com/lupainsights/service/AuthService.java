@@ -7,6 +7,7 @@ import br.com.lupainsights.dto.AuthResponse;
 import br.com.lupainsights.dto.ChangePasswordRequest;
 import br.com.lupainsights.dto.LoginRequest;
 import br.com.lupainsights.dto.RegisterRequest;
+import br.com.lupainsights.dto.RegisterResponse;
 import br.com.lupainsights.dto.UserResponse;
 import br.com.lupainsights.entity.UserEntity;
 import br.com.lupainsights.plan.PlanLimitsService;
@@ -14,6 +15,7 @@ import br.com.lupainsights.plan.PlanService;
 import br.com.lupainsights.repository.UserRepository;
 import br.com.lupainsights.subscription.SubscriptionService;
 import br.com.lupainsights.util.CpfValidator;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class AuthService {
     private final TrialService trialService;
     private final SubscriptionService subscriptionService;
     private final SecurityProperties securityProperties;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
@@ -42,7 +45,8 @@ public class AuthService {
                        PlanLimitsService planLimitsService,
                        TrialService trialService,
                        SubscriptionService subscriptionService,
-                       SecurityProperties securityProperties) {
+                       SecurityProperties securityProperties,
+                       @Lazy EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -51,9 +55,10 @@ public class AuthService {
         this.trialService = trialService;
         this.subscriptionService = subscriptionService;
         this.securityProperties = securityProperties;
+        this.emailVerificationService = emailVerificationService;
     }
 
-    public AuthResponse registrar(RegisterRequest request) {
+    public RegisterResponse registrar(RegisterRequest request) {
         validarRegistro(request);
 
         String email = normalizarEmail(request.getEmail());
@@ -74,11 +79,13 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setCreatedAt(Instant.now());
         user.setEnabled(true);
+        user.setEmailVerified(false);
         user.setRole(UserRole.USER);
         user.setPlan(SubscriptionPlan.FREE);
 
         userRepository.save(user);
-        return montarAuthResponse(user);
+        emailVerificationService.enviarVerificacao(user);
+        return new RegisterResponse(emailVerificationService.mensagemCadastro(), email);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -98,6 +105,11 @@ public class AuthService {
         if (!user.isEnabled() || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             registrarFalhaLogin(user);
             throw new IllegalArgumentException("E-mail ou senha inválidos");
+        }
+
+        if (!user.isEmailVerified()) {
+            throw new IllegalStateException(
+                    "Confirme seu e-mail antes de entrar. Acesse o link enviado no cadastro ou solicite um novo em /cadastro-pendente.");
         }
 
         user.setFailedLoginAttempts(0);
@@ -154,6 +166,12 @@ public class AuthService {
         if (request.getPassword() == null || request.getPassword().length() < 8) {
             throw new IllegalArgumentException("Senha deve ter pelo menos 8 caracteres");
         }
+    }
+
+    public AuthResponse montarAuthResponsePublico(UserEntity user) {
+        trialService.expirarTrialSeNecessario(user);
+        subscriptionService.expirarSeNecessario(user);
+        return montarAuthResponse(user);
     }
 
     private AuthResponse montarAuthResponse(UserEntity user) {

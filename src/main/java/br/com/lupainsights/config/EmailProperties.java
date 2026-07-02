@@ -11,6 +11,7 @@ public class EmailProperties {
     private String fromName = "Lupa Insights";
     private String frontendUrl = "http://localhost:4200";
     private int resetTokenTtlHours = 1;
+    private int verificationTokenTtlHours = 24;
 
     public boolean isEnabled() {
         return enabled;
@@ -58,6 +59,14 @@ public class EmailProperties {
 
     public void setResetTokenTtlHours(int resetTokenTtlHours) {
         this.resetTokenTtlHours = resetTokenTtlHours;
+    }
+
+    public int getVerificationTokenTtlHours() {
+        return verificationTokenTtlHours;
+    }
+
+    public void setVerificationTokenTtlHours(int verificationTokenTtlHours) {
+        this.verificationTokenTtlHours = verificationTokenTtlHours;
     }
 
     public boolean isResendConfigured() {

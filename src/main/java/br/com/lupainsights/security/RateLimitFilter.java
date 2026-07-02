@@ -109,6 +109,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && path.equals("/auth/bootstrap-admin")) {
             return new RateLimitRule(securityProperties.getAdminBootstrapPerHour(), HOUR_MS, 3600, "bootstrap-admin");
         }
+        if ("POST".equalsIgnoreCase(method) && path.equals("/auth/resend-verification")) {
+            return new RateLimitRule(securityProperties.getEmailVerificationResendPerHour(), HOUR_MS, 3600, "resend-verification");
+        }
         if ("PUT".equalsIgnoreCase(method) && path.equals("/auth/password")) {
             return new RateLimitRule(securityProperties.getPasswordChangePerHour(), HOUR_MS, 3600, "password");
         }

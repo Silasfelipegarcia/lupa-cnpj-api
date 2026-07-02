@@ -53,6 +53,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (!user.isEnabled()) {
                     throw new JwtException("Conta desativada");
                 }
+                if (!user.isEmailVerified()) {
+                    throw new JwtException("E-mail não confirmado");
+                }
                 UserPrincipal principal = new UserPrincipal(
                         user.getId(), user.getEmail(), user.getRole(), user.getPlan(),
                         !user.isContaBloqueada(), user.isEnabled());

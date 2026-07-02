@@ -30,7 +30,8 @@ public final class PublicApiRoutes {
         }
         if (normalized.startsWith("/auth/register") || normalized.startsWith("/auth/login")
                 || normalized.startsWith("/auth/forgot-password") || normalized.startsWith("/auth/reset-password")
-                || normalized.startsWith("/auth/bootstrap-admin")) {
+                || normalized.startsWith("/auth/bootstrap-admin")
+                || normalized.startsWith("/auth/verify-email") || normalized.startsWith("/auth/resend-verification")) {
             return true;
         }
         if (normalized.startsWith("/cnpj/preview")) {

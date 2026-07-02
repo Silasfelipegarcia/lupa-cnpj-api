@@ -37,7 +37,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login",
-                                "/auth/forgot-password", "/auth/reset-password", "/auth/bootstrap-admin").permitAll()
+                                "/auth/forgot-password", "/auth/reset-password", "/auth/bootstrap-admin",
+                                "/auth/verify-email", "/auth/resend-verification").permitAll()
                         .requestMatchers(HttpMethod.POST, "/analytics/event").permitAll()
                         .requestMatchers(HttpMethod.GET, "/health", "/actuator/health", "/").permitAll()
                         .requestMatchers(HttpMethod.GET, "/plans", "/plans/**").permitAll()

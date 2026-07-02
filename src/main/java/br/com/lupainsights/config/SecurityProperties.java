@@ -33,6 +33,7 @@ public class SecurityProperties {
     private int consultaPerMinute = 30;
     private int adminPerMinute = 30;
     private int adminBootstrapPerHour = 3;
+    private int emailVerificationResendPerHour = 3;
     private String redisUrl = "";
 
     public int getImportPerHour() {
@@ -257,6 +258,14 @@ public class SecurityProperties {
 
     public void setAdminBootstrapPerHour(int adminBootstrapPerHour) {
         this.adminBootstrapPerHour = adminBootstrapPerHour;
+    }
+
+    public int getEmailVerificationResendPerHour() {
+        return emailVerificationResendPerHour;
+    }
+
+    public void setEmailVerificationResendPerHour(int emailVerificationResendPerHour) {
+        this.emailVerificationResendPerHour = emailVerificationResendPerHour;
     }
 
     public String getRedisUrl() {
