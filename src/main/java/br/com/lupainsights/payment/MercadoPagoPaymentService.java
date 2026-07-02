@@ -304,7 +304,10 @@ public class MercadoPagoPaymentService {
         body.put("installments", installments);
         body.put("external_reference", orderId.toString());
         body.put("payer", payer);
-        body.put("binary_mode", true);
+        if (plan != SubscriptionPlan.ADMIN_TEST) {
+            body.put("binary_mode", true);
+        }
+        adicionarInfoAntiFraude(body, user, plan, amountCents);
         if (cartaoMp != null) {
             adicionarDadosCartaoSalvo(body, cartaoMp);
         }
@@ -521,6 +524,38 @@ public class MercadoPagoPaymentService {
         }
     }
 
+    private void adicionarInfoAntiFraude(Map<String, Object> body, UserEntity user,
+                                         SubscriptionPlan plan, int amountCents) {
+        boolean upgrade = false;
+        String titulo = descricaoPagamento(plan, upgrade);
+        double valor = amountCents / 100.0;
+
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", plan.name());
+        item.put("title", titulo);
+        item.put("description", titulo);
+        item.put("quantity", 1);
+        item.put("unit_price", valor);
+        item.put("category_id", "services");
+
+        Map<String, Object> payerInfo = new HashMap<>();
+        if (user.getNome() != null && !user.getNome().isBlank()) {
+            String[] partes = user.getNome().trim().split("\\s+", 2);
+            payerInfo.put("first_name", partes[0]);
+            if (partes.length > 1) {
+                payerInfo.put("last_name", partes[1]);
+            }
+        }
+
+        Map<String, Object> additionalInfo = new HashMap<>();
+        additionalInfo.put("items", List.of(item));
+        if (!payerInfo.isEmpty()) {
+            additionalInfo.put("payer", payerInfo);
+        }
+        body.put("additional_info", additionalInfo);
+        body.put("statement_descriptor", "LUPA INSIGHTS");
+    }
+
     private SavedCardResponse mapearCartao(JsonNode node) {
         SavedCardResponse card = new SavedCardResponse();
         card.setId(node.path("id").asText(null));
@@ -612,7 +647,7 @@ public class MercadoPagoPaymentService {
                 case "cc_rejected_insufficient_amount" ->
                         "Saldo ou limite insuficiente no cartão.";
                 case "cc_rejected_high_risk" ->
-                        "Recusado pelo antifraude do Mercado Pago. Tente via checkout ou outro cartão.";
+                        "Antifraude do Mercado Pago bloqueou cobrança direta (cartão pode estar correto). Use o checkout Mercado Pago.";
                 case "cc_rejected_call_for_authorize" ->
                         "Ligue para o banco para autorizar compras online.";
                 case "cc_rejected_card_disabled" ->
