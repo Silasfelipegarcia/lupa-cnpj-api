@@ -304,6 +304,7 @@ public class MercadoPagoPaymentService {
         body.put("installments", installments);
         body.put("external_reference", orderId.toString());
         body.put("payer", payer);
+        body.put("binary_mode", true);
         if (cartaoMp != null) {
             adicionarDadosCartaoSalvo(body, cartaoMp);
         }
@@ -327,11 +328,15 @@ public class MercadoPagoPaymentService {
             throw new IllegalStateException("Falha ao processar pagamento");
         }
 
-        String status = payment.path("status").asText("pending").toUpperCase(Locale.ROOT);
         String paymentId = payment.path("id").asText(null);
+        payment = aguardarStatusFinal(paymentId, payment);
+
+        String status = payment.path("status").asText("pending").toUpperCase(Locale.ROOT);
+        String statusDetail = payment.path("status_detail").asText(null);
 
         order.setMpPaymentId(paymentId);
         order.setStatus(status);
+        order.setStatusDetail(statusDetail);
         order.setUpdatedAt(Instant.now());
         if ("APPROVED".equalsIgnoreCase(status)) {
             order.setPaidAt(Instant.now());
@@ -340,13 +345,18 @@ public class MercadoPagoPaymentService {
 
         if ("APPROVED".equalsIgnoreCase(status)) {
             aplicarPagamentoAprovado(user, plan, order, request.getCardId());
+        } else if ("REJECTED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) {
+            log.warn("Pagamento {} recusado para {}: {} ({})",
+                    paymentId, user.getEmail(), status, statusDetail);
         }
 
+        String mensagem = traduzirStatusDetail(status, statusDetail);
         ChargePlanResponse response = new ChargePlanResponse();
         response.setOrderId(orderId.toString());
         response.setStatus(status);
         response.setStatusLabel(rotuloStatus(status));
         response.setPlanNome(planLimitsService.nomeExibicao(plan));
+        response.setMessage(mensagem.isBlank() ? null : mensagem);
         return response;
     }
 
@@ -419,11 +429,19 @@ public class MercadoPagoPaymentService {
     private Map<String, Object> montarPayer(UserEntity user, boolean cartaoSalvo) {
         Map<String, Object> payer = new HashMap<>();
         payer.put("email", user.getEmail());
+        if (user.getCpf() != null && !user.getCpf().isBlank()) {
+            payer.put("identification", Map.of("type", "CPF", "number", user.getCpf().replaceAll("\\D", "")));
+        }
+        if (user.getNome() != null && !user.getNome().isBlank()) {
+            String[] partes = user.getNome().trim().split("\\s+", 2);
+            payer.put("first_name", partes[0]);
+            if (partes.length > 1) {
+                payer.put("last_name", partes[1]);
+            }
+        }
         if (cartaoSalvo && user.getMpCustomerId() != null && !user.getMpCustomerId().isBlank()) {
             payer.put("type", "customer");
             payer.put("id", user.getMpCustomerId());
-        } else {
-            payer.put("identification", Map.of("type", "CPF", "number", user.getCpf()));
         }
         return payer;
     }
@@ -529,6 +547,7 @@ public class MercadoPagoPaymentService {
         item.setAmountLabel(formatarValor(order.getAmountCents()));
         item.setStatus(order.getStatus());
         item.setStatusLabel(rotuloStatus(order.getStatus()));
+        item.setStatusDetail(traduzirStatusDetail(order.getStatus(), order.getStatusDetail()));
         item.setCreatedAt(order.getCreatedAt());
         return item;
     }
@@ -545,9 +564,73 @@ public class MercadoPagoPaymentService {
         return switch (status.toUpperCase(Locale.ROOT)) {
             case "APPROVED" -> "Aprovado";
             case "PENDING" -> "Pendente";
+            case "IN_PROCESS" -> "Processando";
             case "REJECTED", "CANCELLED" -> "Recusado";
             default -> status;
         };
+    }
+
+    private JsonNode aguardarStatusFinal(String paymentId, JsonNode paymentInicial) {
+        if (paymentId == null || paymentId.isBlank()) {
+            return paymentInicial;
+        }
+        JsonNode atual = paymentInicial;
+        for (int tentativa = 0; tentativa < 6; tentativa++) {
+            String status = atual.path("status").asText("");
+            if (!deveAguardarStatus(status)) {
+                return atual;
+            }
+            try {
+                Thread.sleep(1_500L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            JsonNode recarregado = buscarPagamentoMercadoPago(paymentId);
+            if (recarregado != null) {
+                atual = recarregado;
+            }
+        }
+        return atual;
+    }
+
+    private boolean deveAguardarStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return true;
+        }
+        return switch (status.toLowerCase(Locale.ROOT)) {
+            case "pending", "in_process", "authorized" -> true;
+            default -> false;
+        };
+    }
+
+    private String traduzirStatusDetail(String status, String statusDetail) {
+        if (statusDetail != null && !statusDetail.isBlank()) {
+            return switch (statusDetail.toLowerCase(Locale.ROOT)) {
+                case "cc_rejected_bad_filled_security_code" ->
+                        "CVV incorreto. Confira os dígitos do verso do cartão.";
+                case "cc_rejected_insufficient_amount" ->
+                        "Saldo ou limite insuficiente no cartão.";
+                case "cc_rejected_high_risk" ->
+                        "Recusado pelo antifraude do Mercado Pago. Tente via checkout ou outro cartão.";
+                case "cc_rejected_call_for_authorize" ->
+                        "Ligue para o banco para autorizar compras online.";
+                case "cc_rejected_card_disabled" ->
+                        "Cartão desabilitado. Verifique com o banco emissor.";
+                case "cc_rejected_duplicated_payment" ->
+                        "Pagamento duplicado detectado. Aguarde alguns minutos.";
+                case "cc_rejected_other_reason" ->
+                        "Cartão recusado pelo emissor. Tente outro cartão ou o checkout Mercado Pago.";
+                default -> "Motivo: " + statusDetail.replace('_', ' ');
+            };
+        }
+        if ("REJECTED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) {
+            return "Pagamento recusado pelo emissor do cartão ou antifraude.";
+        }
+        if ("IN_PROCESS".equalsIgnoreCase(status) || "PENDING".equalsIgnoreCase(status)) {
+            return "Pagamento em processamento. Atualize o histórico em alguns instantes.";
+        }
+        return "";
     }
 
     @Transactional
@@ -706,6 +789,7 @@ public class MercadoPagoPaymentService {
         }
 
         String status = payment.path("status").asText("");
+        String statusDetail = payment.path("status_detail").asText(null);
         String externalReference = payment.path("external_reference").asText("");
         if (externalReference.isBlank()) {
             return;
@@ -726,6 +810,7 @@ public class MercadoPagoPaymentService {
 
         order.setMpPaymentId(paymentId);
         order.setStatus(status.toUpperCase());
+        order.setStatusDetail(statusDetail);
         order.setUpdatedAt(Instant.now());
         if ("APPROVED".equalsIgnoreCase(status)) {
             order.setPaidAt(Instant.now());

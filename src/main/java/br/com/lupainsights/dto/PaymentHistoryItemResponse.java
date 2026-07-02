@@ -9,6 +9,7 @@ public class PaymentHistoryItemResponse {
     private String amountLabel;
     private String status;
     private String statusLabel;
+    private String statusDetail;
     private Instant createdAt;
 
     public String getId() {
@@ -49,6 +50,14 @@ public class PaymentHistoryItemResponse {
 
     public void setStatusLabel(String statusLabel) {
         this.statusLabel = statusLabel;
+    }
+
+    public String getStatusDetail() {
+        return statusDetail;
+    }
+
+    public void setStatusDetail(String statusDetail) {
+        this.statusDetail = statusDetail;
     }
 
     public Instant getCreatedAt() {

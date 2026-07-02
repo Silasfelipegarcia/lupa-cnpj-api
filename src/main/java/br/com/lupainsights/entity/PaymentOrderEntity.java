@@ -34,6 +34,9 @@ public class PaymentOrderEntity {
     @Column(nullable = false, length = 30)
     private String status;
 
+    @Column(name = "status_detail", length = 120)
+    private String statusDetail;
+
     @Column(name = "amount_cents", nullable = false)
     private int amountCents;
 
@@ -95,6 +98,14 @@ public class PaymentOrderEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getStatusDetail() {
+        return statusDetail;
+    }
+
+    public void setStatusDetail(String statusDetail) {
+        this.statusDetail = statusDetail;
     }
 
     public int getAmountCents() {

@@ -6,6 +6,7 @@ public class ChargePlanResponse {
     private String status;
     private String statusLabel;
     private String planNome;
+    private String message;
 
     public String getOrderId() {
         return orderId;
@@ -37,5 +38,13 @@ public class ChargePlanResponse {
 
     public void setPlanNome(String planNome) {
         this.planNome = planNome;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }
