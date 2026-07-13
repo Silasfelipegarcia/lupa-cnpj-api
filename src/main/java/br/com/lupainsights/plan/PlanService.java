@@ -109,6 +109,7 @@ public class PlanService {
             beneficios.add("Filtro de empresas ativas");
         }
         if (plan == SubscriptionPlan.PREMIUM) {
+            beneficios.add(0, "7 dias grátis ao criar conta");
             beneficios.add("Histórico de 90 dias");
         }
         return beneficios;
@@ -136,7 +137,7 @@ public class PlanService {
             item.setAnnualPriceCents(annualCents);
             item.setAnnualPriceLabel(String.format("R$ %.2f/ano", annualCents / 100.0));
             if (plan == SubscriptionPlan.PREMIUM) {
-                item.setPaymentOptionsLabel("7 dias grátis para começar · depois cobrança anual");
+                item.setPaymentOptionsLabel("Inclui 7 dias grátis");
             } else {
                 item.setPaymentOptionsLabel("À vista ou em até 12x no cartão");
             }
