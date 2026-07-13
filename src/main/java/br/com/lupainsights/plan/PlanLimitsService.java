@@ -47,8 +47,8 @@ public class PlanLimitsService {
     public String descricaoCurta(SubscriptionPlan plan) {
         return switch (plan) {
             case FREE -> "Após o trial · 3 CNPJs/dia · 1 planilha de até 5 linhas";
-            case PREMIUM -> "10 planilhas/dia · até 100 empresas por planilha";
-            case PRO_PLUS -> "50 planilhas/dia · até 500 empresas por planilha";
+            case PREMIUM -> "10 planilhas/dia · até 100 empresas · CNPJ avulso ilimitado";
+            case PRO_PLUS -> "50 planilhas/dia · até 500 empresas · CNPJ avulso ilimitado";
             case ADMIN_TEST -> "Pagamento único · somente administradores";
         };
     }

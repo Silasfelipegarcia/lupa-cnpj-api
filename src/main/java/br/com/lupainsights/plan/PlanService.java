@@ -56,13 +56,11 @@ public class PlanService {
 
     public List<PlanCatalogItemResponse> catalogo(boolean incluirPlanoAdmin) {
         List<PlanCatalogItemResponse> itens = new ArrayList<>();
-        itens.add(itemTrialGratis());
         itens.add(item(SubscriptionPlan.PREMIUM, mercadoPagoProperties.getPremiumPriceCents()));
         itens.add(item(SubscriptionPlan.PRO_PLUS, mercadoPagoProperties.getProPlusPriceCents()));
         if (incluirPlanoAdmin) {
             itens.add(itemAdminTest());
         }
-        itens.add(itemBusiness());
         return itens;
     }
 
@@ -92,36 +90,27 @@ public class PlanService {
         return item;
     }
 
-    private PlanCatalogItemResponse itemTrialGratis() {
-        PlanLimits limits = planLimitsService.limitesDe(planoTemporario(SubscriptionPlan.PREMIUM));
-        PlanCatalogItemResponse item = new PlanCatalogItemResponse();
-        item.setPlan(SubscriptionPlan.FREE);
-        item.setNome("Trial 7 dias");
-        item.setDescricao("Prospecção completa · ativado ao confirmar o e-mail");
-        item.setMaxRowsPerFile(limits.maxRowsPerFile());
-        item.setBatchSearchesPerDay(formatarLimitePlanilhas(limits));
-        item.setDirectCnpjPerDay(formatarLimiteDirect(SubscriptionPlan.PREMIUM, limits));
-        item.setPriceCents(0);
-        item.setMonthlyPriceCents(0);
-        item.setAnnualPriceCents(0);
-        item.setPriceLabel("7 dias grátis");
-        item.setAnnualPriceLabel("");
-        item.setPaymentOptionsLabel("Sem cartão para começar");
-        item.setBeneficios(beneficiosTrial(limits));
-        item.setContatoComercial(false);
-        return item;
-    }
-
-    private List<String> beneficiosTrial(PlanLimits limits) {
+    private List<String> beneficiosDe(SubscriptionPlan plan, PlanLimits limits) {
         List<String> beneficios = new ArrayList<>();
-        beneficios.add("Até " + limits.maxRowsPerFile() + " empresas por planilha");
-        beneficios.add(formatarLimitePlanilhas(limits));
-        beneficios.add("CNPJ único: " + formatarLimiteDirect(SubscriptionPlan.PREMIUM, limits) + " por dia");
-        beneficios.add("Busca por razão social");
-        beneficios.add("Exportação Excel (.xlsx)");
-        beneficios.add("Filtro de empresas ativas");
-        beneficios.add("Histórico de 90 dias");
-        beneficios.add("Cadastre cartão antes do fim para manter o acesso");
+        if (plan == SubscriptionPlan.PRO_PLUS) {
+            beneficios.add("Tudo do Prospecção");
+            beneficios.add("Filtros por UF, CNAE e contato");
+            beneficios.add("Remoção de CNPJs duplicados");
+            beneficios.add("Histórico ilimitado");
+            return beneficios;
+        }
+        if (limits.pesquisaRazaoSocial()) {
+            beneficios.add("Busca por razão social");
+        }
+        if (limits.exportExcel()) {
+            beneficios.add("Exportação Excel (.xlsx)");
+        }
+        if (limits.filtroSomenteAtivos()) {
+            beneficios.add("Filtro de empresas ativas");
+        }
+        if (plan == SubscriptionPlan.PREMIUM) {
+            beneficios.add("Histórico de 90 dias");
+        }
         return beneficios;
     }
 
@@ -146,65 +135,15 @@ public class PlanService {
             item.setPriceLabel(String.format("R$ %.2f/mês", priceCents / 100.0));
             item.setAnnualPriceCents(annualCents);
             item.setAnnualPriceLabel(String.format("R$ %.2f/ano", annualCents / 100.0));
-            item.setPaymentOptionsLabel("À vista ou em até 12x no cartão");
+            if (plan == SubscriptionPlan.PREMIUM) {
+                item.setPaymentOptionsLabel("7 dias grátis para começar · depois cobrança anual");
+            } else {
+                item.setPaymentOptionsLabel("À vista ou em até 12x no cartão");
+            }
         }
         item.setBeneficios(beneficiosDe(plan, limits));
         item.setContatoComercial(false);
         return item;
-    }
-
-    private PlanCatalogItemResponse itemBusiness() {
-        PlanCatalogItemResponse item = new PlanCatalogItemResponse();
-        item.setNome("Business");
-        item.setDescricao("Alto volume, API e integrações");
-        item.setMaxRowsPerFile(0);
-        item.setBatchSearchesPerDay("Sob medida");
-        item.setDirectCnpjPerDay("Sob medida");
-        item.setPriceCents(0);
-        item.setMonthlyPriceCents(0);
-        item.setAnnualPriceCents(0);
-        item.setPriceLabel("Fale conosco");
-        item.setAnnualPriceLabel("");
-        item.setPaymentOptionsLabel("");
-        item.setBeneficios(List.of(
-                "API dedicada e webhooks",
-                "Integrações com CRM",
-                "Volume e SLA customizados",
-                "Faturamento para empresas"
-        ));
-        item.setContatoComercial(true);
-        return item;
-    }
-
-    private List<String> beneficiosDe(SubscriptionPlan plan, PlanLimits limits) {
-        List<String> beneficios = new ArrayList<>();
-        beneficios.add("Até " + limits.maxRowsPerFile() + " empresas por planilha");
-        beneficios.add(formatarLimitePlanilhas(limits));
-        beneficios.add("CNPJ único: " + formatarLimiteDirect(plan, limits) + " por dia");
-        if (limits.pesquisaRazaoSocial()) {
-            beneficios.add("Busca por razão social");
-        }
-        if (limits.exportExcel()) {
-            beneficios.add("Exportação Excel (.xlsx)");
-        }
-        if (limits.filtroSomenteAtivos()) {
-            beneficios.add("Filtro de empresas ativas");
-        }
-        if (limits.filtrosAvancados()) {
-            beneficios.add("Filtros por UF, CNAE e contato");
-        }
-        if (limits.dedupeHabilitado()) {
-            beneficios.add("Remoção de CNPJs duplicados");
-        }
-        if (plan == SubscriptionPlan.FREE) {
-            beneficios.add("Histórico de 7 dias");
-            beneficios.add("Telefone, e-mail e endereço no plano pago");
-        } else if (plan == SubscriptionPlan.PREMIUM) {
-            beneficios.add("Histórico de 90 dias");
-        } else if (plan == SubscriptionPlan.PRO_PLUS) {
-            beneficios.add("Histórico ilimitado");
-        }
-        return beneficios;
     }
 
     private UserEntity planoTemporario(SubscriptionPlan plan) {
