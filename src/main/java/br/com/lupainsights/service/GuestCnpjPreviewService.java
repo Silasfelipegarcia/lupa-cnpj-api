@@ -88,6 +88,12 @@ public class GuestCnpjPreviewService {
         preview.setUf(dados.getUf());
         preview.setCep(dados.getCep());
         preview.setCnaePrincipal(dados.getCnaePrincipal());
+        preview.setDataAbertura(dados.getDataAbertura());
+        preview.setCapitalSocial(dados.getCapitalSocial());
+        preview.setPorte(dados.getPorte());
+        preview.setNaturezaJuridica(dados.getNaturezaJuridica());
+        preview.setQuantidadeSocios(dados.getQuantidadeSocios() != null ? dados.getQuantidadeSocios() : 0);
+        preview.setMei(dados.getMei());
         preview.setConsultasUsadas(quotaAtualizada.getConsultasUsadas());
         preview.setConsultasLimite(quotaAtualizada.getConsultasLimite());
         preview.setConsultasRestantes(quotaAtualizada.getConsultasRestantes());

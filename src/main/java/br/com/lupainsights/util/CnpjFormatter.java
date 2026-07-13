@@ -59,4 +59,18 @@ public final class CnpjFormatter {
         }
         return cod + " - " + desc;
     }
+
+    public static String formatarCapitalSocial(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return "";
+        }
+        try {
+            java.math.BigDecimal amount = new java.math.BigDecimal(valor.trim());
+            java.text.NumberFormat formatter = java.text.NumberFormat.getCurrencyInstance(
+                    java.util.Locale.forLanguageTag("pt-BR"));
+            return formatter.format(amount);
+        } catch (NumberFormatException e) {
+            return valor.trim();
+        }
+    }
 }

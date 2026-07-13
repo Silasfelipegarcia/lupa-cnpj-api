@@ -21,6 +21,12 @@ public class CnpjResult {
     private String uf;
     private String cep;
     private String cnaePrincipal;
+    private String dataAbertura;
+    private String capitalSocial;
+    private String porte;
+    private String naturezaJuridica;
+    private Integer quantidadeSocios;
+    private String mei;
     private String observacao;
     private String statusConsulta;
     private String erro;
@@ -44,6 +50,16 @@ public class CnpjResult {
 
         if (response != null) {
             result.setRazaoSocial(nullSafe(response.getRazaoSocial()));
+            result.setCapitalSocial(CnpjFormatter.formatarCapitalSocial(response.getCapitalSocial()));
+            result.setQuantidadeSocios(contarSocios(response.getSocios()));
+            result.setMei(extrairMei(response.getSimples()));
+
+            if (response.getPorte() != null) {
+                result.setPorte(nullSafe(response.getPorte().getDescricao()));
+            }
+            if (response.getNaturezaJuridica() != null) {
+                result.setNaturezaJuridica(nullSafe(response.getNaturezaJuridica().getDescricao()));
+            }
 
             CnpjResponse.Estabelecimento est = response.getEstabelecimento();
             if (est != null) {
@@ -54,6 +70,7 @@ public class CnpjResult {
 
                 result.setNomeFantasia(nullSafe(est.getNomeFantasia()));
                 result.setSituacaoCadastral(nullSafe(est.getSituacaoCadastral()));
+                result.setDataAbertura(nullSafe(est.getDataInicioAtividade()));
                 result.setTelefone1(CnpjFormatter.formatarTelefone(est.getDdd1(), est.getTelefone1()));
                 result.setTelefone2(CnpjFormatter.formatarTelefone(est.getDdd2(), est.getTelefone2()));
                 result.setEmail(nullSafe(est.getEmail()));
@@ -102,6 +119,12 @@ public class CnpjResult {
         copia.setUf(original.getUf());
         copia.setCep(original.getCep());
         copia.setCnaePrincipal(original.getCnaePrincipal());
+        copia.setDataAbertura(original.getDataAbertura());
+        copia.setCapitalSocial(original.getCapitalSocial());
+        copia.setPorte(original.getPorte());
+        copia.setNaturezaJuridica(original.getNaturezaJuridica());
+        copia.setQuantidadeSocios(original.getQuantidadeSocios());
+        copia.setMei(original.getMei());
         copia.setStatusConsulta(original.getStatusConsulta());
         copia.setErro(original.getErro());
         copia.setObservacao(nullSafe(original.getObservacao()));
@@ -110,6 +133,17 @@ public class CnpjResult {
 
     private static String nullSafe(String value) {
         return value != null ? value : "";
+    }
+
+    private static Integer contarSocios(java.util.List<CnpjResponse.Socio> socios) {
+        return socios != null ? socios.size() : 0;
+    }
+
+    private static String extrairMei(CnpjResponse.Simples simples) {
+        if (simples == null || simples.getMei() == null) {
+            return "";
+        }
+        return simples.getMei().trim();
     }
 
     public String getCnpj() {
@@ -238,6 +272,54 @@ public class CnpjResult {
 
     public void setCnaePrincipal(String cnaePrincipal) {
         this.cnaePrincipal = cnaePrincipal;
+    }
+
+    public String getDataAbertura() {
+        return dataAbertura;
+    }
+
+    public void setDataAbertura(String dataAbertura) {
+        this.dataAbertura = dataAbertura;
+    }
+
+    public String getCapitalSocial() {
+        return capitalSocial;
+    }
+
+    public void setCapitalSocial(String capitalSocial) {
+        this.capitalSocial = capitalSocial;
+    }
+
+    public String getPorte() {
+        return porte;
+    }
+
+    public void setPorte(String porte) {
+        this.porte = porte;
+    }
+
+    public String getNaturezaJuridica() {
+        return naturezaJuridica;
+    }
+
+    public void setNaturezaJuridica(String naturezaJuridica) {
+        this.naturezaJuridica = naturezaJuridica;
+    }
+
+    public Integer getQuantidadeSocios() {
+        return quantidadeSocios;
+    }
+
+    public void setQuantidadeSocios(Integer quantidadeSocios) {
+        this.quantidadeSocios = quantidadeSocios;
+    }
+
+    public String getMei() {
+        return mei;
+    }
+
+    public void setMei(String mei) {
+        this.mei = mei;
     }
 
     public String getObservacao() {

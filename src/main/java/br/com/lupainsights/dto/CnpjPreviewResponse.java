@@ -17,6 +17,12 @@ public class CnpjPreviewResponse {
     private String uf;
     private String cep;
     private String cnaePrincipal;
+    private String dataAbertura;
+    private String capitalSocial;
+    private String porte;
+    private String naturezaJuridica;
+    private int quantidadeSocios;
+    private String mei;
     private int consultasUsadas;
     private int consultasLimite;
     private int consultasRestantes;
@@ -142,6 +148,54 @@ public class CnpjPreviewResponse {
 
     public void setCnaePrincipal(String cnaePrincipal) {
         this.cnaePrincipal = cnaePrincipal;
+    }
+
+    public String getDataAbertura() {
+        return dataAbertura;
+    }
+
+    public void setDataAbertura(String dataAbertura) {
+        this.dataAbertura = dataAbertura;
+    }
+
+    public String getCapitalSocial() {
+        return capitalSocial;
+    }
+
+    public void setCapitalSocial(String capitalSocial) {
+        this.capitalSocial = capitalSocial;
+    }
+
+    public String getPorte() {
+        return porte;
+    }
+
+    public void setPorte(String porte) {
+        this.porte = porte;
+    }
+
+    public String getNaturezaJuridica() {
+        return naturezaJuridica;
+    }
+
+    public void setNaturezaJuridica(String naturezaJuridica) {
+        this.naturezaJuridica = naturezaJuridica;
+    }
+
+    public int getQuantidadeSocios() {
+        return quantidadeSocios;
+    }
+
+    public void setQuantidadeSocios(int quantidadeSocios) {
+        this.quantidadeSocios = quantidadeSocios;
+    }
+
+    public String getMei() {
+        return mei;
+    }
+
+    public void setMei(String mei) {
+        this.mei = mei;
     }
 
     public int getConsultasUsadas() {

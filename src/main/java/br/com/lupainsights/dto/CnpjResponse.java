@@ -9,6 +9,18 @@ public class CnpjResponse {
     @JsonProperty("razao_social")
     private String razaoSocial;
 
+    @JsonProperty("capital_social")
+    private String capitalSocial;
+
+    private Porte porte;
+
+    @JsonProperty("natureza_juridica")
+    private NaturezaJuridica naturezaJuridica;
+
+    private java.util.List<Socio> socios;
+
+    private Simples simples;
+
     private Estabelecimento estabelecimento;
 
     public String getRazaoSocial() {
@@ -27,6 +39,93 @@ public class CnpjResponse {
         this.estabelecimento = estabelecimento;
     }
 
+    public String getCapitalSocial() {
+        return capitalSocial;
+    }
+
+    public void setCapitalSocial(String capitalSocial) {
+        this.capitalSocial = capitalSocial;
+    }
+
+    public Porte getPorte() {
+        return porte;
+    }
+
+    public void setPorte(Porte porte) {
+        this.porte = porte;
+    }
+
+    public NaturezaJuridica getNaturezaJuridica() {
+        return naturezaJuridica;
+    }
+
+    public void setNaturezaJuridica(NaturezaJuridica naturezaJuridica) {
+        this.naturezaJuridica = naturezaJuridica;
+    }
+
+    public java.util.List<Socio> getSocios() {
+        return socios;
+    }
+
+    public void setSocios(java.util.List<Socio> socios) {
+        this.socios = socios;
+    }
+
+    public Simples getSimples() {
+        return simples;
+    }
+
+    public void setSimples(Simples simples) {
+        this.simples = simples;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Porte {
+
+        private String descricao;
+
+        public String getDescricao() {
+            return descricao;
+        }
+
+        public void setDescricao(String descricao) {
+            this.descricao = descricao;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class NaturezaJuridica {
+
+        private String descricao;
+
+        public String getDescricao() {
+            return descricao;
+        }
+
+        public void setDescricao(String descricao) {
+            this.descricao = descricao;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Socio {
+        // Apenas para contagem; demais campos ignorados via @JsonIgnoreProperties
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Simples {
+
+        private String mei;
+
+        public String getMei() {
+            return mei;
+        }
+
+        public void setMei(String mei) {
+            this.mei = mei;
+        }
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Estabelecimento {
 
@@ -40,6 +139,9 @@ public class CnpjResponse {
 
         @JsonProperty("situacao_cadastral")
         private String situacaoCadastral;
+
+        @JsonProperty("data_inicio_atividade")
+        private String dataInicioAtividade;
 
         private String logradouro;
         private String numero;
@@ -87,6 +189,14 @@ public class CnpjResponse {
 
         public void setSituacaoCadastral(String situacaoCadastral) {
             this.situacaoCadastral = situacaoCadastral;
+        }
+
+        public String getDataInicioAtividade() {
+            return dataInicioAtividade;
+        }
+
+        public void setDataInicioAtividade(String dataInicioAtividade) {
+            this.dataInicioAtividade = dataInicioAtividade;
         }
 
         public String getLogradouro() {
